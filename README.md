@@ -72,6 +72,7 @@ Aves is configured using a `json` file. Save it as `config.json`.
                the time from the arduino from milliseconds to seconds, and the sensor reads to Volts ( 5V/1023 = 0.004887586)
 - The `gui` defines the `axes` or subplots, and where will be placed. Each subplot sets which `points` from the captured data will contain.
 
+
     {
       "version": 1,
       "input": {
@@ -145,6 +146,8 @@ Check `python3 -m aves.realtime --help` for all other command line options, for 
 - `--plot_every_n_samples 10` Wait for at least 10 samples to refresh the GUI
 - `--plot_win_size 200` Keep up to 200 samples in the plot (use 0 for unlimited)
 - `--config another.json` Use `another.json` as config file.
+
+[!example/demo.png]
 
 ### Explore the acquired data:
 
