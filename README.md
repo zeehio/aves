@@ -149,7 +149,7 @@ Check `python3 -m aves.realtime --help` for all other command line options, for 
 - `--plot_win_size 200` Keep up to 200 samples in the plot (use 0 for unlimited)
 - `--config another.json` Use `another.json` as config file.
 
-[!example/demo.png]
+![Image of the acquisition demo](example/demo.png)
 
 ### Explore the acquired data:
 
