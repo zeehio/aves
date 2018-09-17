@@ -17,43 +17,45 @@ aquired with this tool.
 
 Reads the analog ports from the arduino board and prints them on the serial port:
 
-    #include "Arduino.h"
-    
-    /* Sample time and serial port speed */
-    /* ================================= */
-    const uint32_t SAMPLE_TIME =  100UL; /* ms */
-    const int SERIAL_PORT_BAUDS = 9600; /* bauds */
-    
-    unsigned long prevMillis = 0;
-    
-    void setup()
-    {
-    
-      Serial.begin(SERIAL_PORT_BAUDS);
-      analogReadResolution(10); /* 10 bits => 2^10 = 1024 levels in analogRead() */
-    }
-    
-    void loop() {
-      unsigned long curMillis = millis();
-    
-      if (curMillis - prevMillis >= SAMPLE_TIME) {
-        int sensor1 = analogRead(A0);
-        int sensor2 = analogRead(A1);
-        /* Check your Arduino specs:
-         * - The input range on the analog ports
-         * - The resolution (set above, some boards have 12 bits ADC capabilities)
-         * analogRead maps voltage from the input range (usually [0, 5] or [0, 3.3] volts)
-         * to integer values in the range [0, 1023] or [0, 4095] (depends on the resolution)
-         */
-        Serial.print(millis());
-        Serial.print(" ");
-        Serial.print(sensor1);
-        Serial.print(" ");
-        Serial.print(sensor2);
-        Serial.print("\n");
-        prevMillis = curMillis;
-      }
-    }
+```
+#include "Arduino.h"
+
+/* Sample time and serial port speed */
+/* ================================= */
+const uint32_t SAMPLE_TIME =  100UL; /* ms */
+const int SERIAL_PORT_BAUDS = 9600; /* bauds */
+
+unsigned long prevMillis = 0;
+
+void setup()
+{
+
+  Serial.begin(SERIAL_PORT_BAUDS);
+  analogReadResolution(10); /* 10 bits => 2^10 = 1024 levels in analogRead() */
+}
+
+void loop() {
+  unsigned long curMillis = millis();
+
+  if (curMillis - prevMillis >= SAMPLE_TIME) {
+    int sensor1 = analogRead(A0);
+    int sensor2 = analogRead(A1);
+    /* Check your Arduino specs:
+     * - The input range on the analog ports
+     * - The resolution (set above, some boards have 12 bits ADC capabilities)
+     * analogRead maps voltage from the input range (usually [0, 5] or [0, 3.3] volts)
+     * to integer values in the range [0, 1023] or [0, 4095] (depends on the resolution)
+     */
+    Serial.print(millis());
+    Serial.print(" ");
+    Serial.print(sensor1);
+    Serial.print(" ");
+    Serial.print(sensor2);
+    Serial.print("\n");
+    prevMillis = curMillis;
+  }
+}
+```
 
 Take note of:
 - The SAMPLE_TIME (in ms): `100`
@@ -72,67 +74,67 @@ Aves is configured using a `json` file. Save it as `config.json`.
                the time from the arduino from milliseconds to seconds, and the sensor reads to Volts ( 5V/1023 = 0.004887586)
 - The `gui` defines the `axes` or subplots, and where will be placed. Each subplot sets which `points` from the captured data will contain.
 
-
-    {
-      "version": 1,
-      "input": {
-        "time_python": "time_python",
-        "arduino": {
-          "baudrate": 9600,
-          "timeout": 3,
-          "columns": [
-            {
-              "point": "time_arduino",
-              "conversion_factor": 1E-3
-            },
-            {
-              "point": "Sensor 1",
-              "conversion_factor": 0.004887586
-            },
-            {
-              "point": "Sensor 2",
-              "conversion_factor": 0.004887586
-            }
-          ]
+```
+{
+  "version": 1,
+  "input": {
+    "time_python": "time_python",
+    "arduino": {
+      "baudrate": 9600,
+      "timeout": 3,
+      "columns": [
+        {
+          "point": "time_arduino",
+          "conversion_factor": 1E-3
+        },
+        {
+          "point": "Sensor 1",
+          "conversion_factor": 0.004887586
+        },
+        {
+          "point": "Sensor 2",
+          "conversion_factor": 0.004887586
+        }
+      ]
+    }
+  },
+  "gui": {
+    "window_title": "Aves Demo",
+    "refresh_time_ms": 100,
+    "axes": {
+      "A subplot": {
+        "row": 0,
+        "col": 0,
+        "rowspan": 1,
+        "colspan": 1,
+        "points": ["Sensor 1"],
+        "options": {
+          "ylim": [-0.5, 5.5],
+          "ylabel": "Sensor 1 (V)"
         }
       },
-      "gui": {
-        "window_title": "Aves Demo",
-        "refresh_time_ms": 100,
-        "axes": {
-          "A subplot": {
-            "row": 0,
-            "col": 0,
-            "rowspan": 1,
-            "colspan": 1,
-            "points": ["Sensor 1"],
-            "options": {
-              "ylim": [-0.5, 5.5],
-              "ylabel": "Sensor 1 (V)"
-            }
-          },
-          "Another subplot": {
-            "row": 2,
-            "col": 0,
-            "rowspan": 1,
-            "colspan": 1,
-            "points": ["Sensor 2"],
-            "options": {
-              "ylim": [-0.5, 5.5],
-              "ylabel": "Sensor 2 (V)"
-            }
-          }
-        },
-       "sharexaxis": true,
-       "x_points": "time_arduino"
-      },
-      "output" : {
-        "columns": [
-          "time_python", "time_arduino", "Sensor 1", "Sensor 2"
-        ]
+      "Another subplot": {
+        "row": 2,
+        "col": 0,
+        "rowspan": 1,
+        "colspan": 1,
+        "points": ["Sensor 2"],
+        "options": {
+          "ylim": [-0.5, 5.5],
+          "ylabel": "Sensor 2 (V)"
+        }
       }
-    }
-
+    },
+   "sharexaxis": true,
+   "x_points": "time_arduino"
+  },
+  "output" : {
+    "columns": [
+      "time_python", "time_arduino", "Sensor 1", "Sensor 2"
+    ]
+  }
+}
+```
 ### Run it:
 
     python3 -m aves.realtime --port *Serial port where your arduino is connected* --outfile "test.txt"
