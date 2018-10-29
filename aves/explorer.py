@@ -21,8 +21,6 @@ It does two things:
 from __future__ import print_function
 
 import argparse
-import numpy as np
-from scipy.signal import medfilt
 
 from aves import gui
 from aves import io
@@ -36,8 +34,6 @@ def parse_arguments():
     # add expected arguments
     parser.add_argument("--filename", dest='filename', default=None,
                         help="file name to load")
-    parser.add_argument("--median", dest='median', default=1, type=int,
-                        help="window size of the median filter (odd value)")
     parser.add_argument('--config', dest='config_file', default='config.json',
                         help="Arduino output columns, GUI layout and file format")
     # parse args
@@ -68,12 +64,6 @@ def DataExplorer():
     buffers.extend(samples)
     # Copy buffer to gui
     if buffers.data:
-        # Median filter on the buffers
-        if args.median > 1:
-            for sensor, valores in buffers.data.items():
-                if sensor in [time_python, x_axis_data]:
-                    continue
-                buffers.data[sensor] = list(medfilt(np.array(valores), kernel_size=args.median))
         window.set_data(buffers.data)
         # Update limits on the x axis in the GUI:
         window.set_xlim()

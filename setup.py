@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aves",
-    version="1.0.0",
+    version="2.0.0",
     author="Sergio Oller Moreno",
     author_email="sergioller@gmail.com",
     description="Acquisition, Visualization and Exploration Software",
@@ -13,6 +13,10 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/zeehio/aves",
     packages=setuptools.find_packages(),
+    install_requires=[
+          'pyserial',
+          'matplotlib',
+      ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
