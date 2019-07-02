@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aves",
-    version="3.0.0",
+    version="3.0.1",
     author="Sergio Oller Moreno",
     author_email="sergioller@gmail.com",
     description="Acquisition, Visualization and Exploration Software",

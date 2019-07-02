@@ -71,6 +71,8 @@ TIME_COMPUTER = "time_computer"
 
 def mkdir_p(path):
     "Creates a directory, recursively if necessary"
+    if path == "":
+        return
     try:
         os.makedirs(path)
     except OSError as exc:
