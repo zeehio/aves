@@ -67,6 +67,7 @@ from collections import defaultdict
 from functools import partial
 import serial
 
+TIME_COMPUTER = "time_computer"
 
 def mkdir_p(path):
     "Creates a directory, recursively if necessary"
@@ -204,11 +205,10 @@ class ReadSensorSerial(ReadSensorAbstract):
         # Fields:
         self._fields = []
         for column in config["arduino"]["columns"]:
-            self._fields.append((column["point"], column["conversion_factor"]))
+            self._fields.append((column["name"], column["conversion_factor"]))
         self.port = port
         self._baudrate = config["arduino"]["baudrate"]
         self._timeout = config["arduino"]["timeout"]
-        self._time_python = config["time_python"]
         self._inputdata = None
         return
 
@@ -251,7 +251,7 @@ class ReadSensorSerial(ReadSensorAbstract):
         # Convert units of acquired values and store in sample:
         for i, (field_name, factor) in enumerate(self._fields):
             sample[field_name] = data_acq[i]*factor
-        sample[self._time_python] = datetime.datetime.now().isoformat()
+        sample[TIME_COMPUTER] = datetime.datetime.now().isoformat()
         return sample
 
     def readsamples(self, num_samples=10):

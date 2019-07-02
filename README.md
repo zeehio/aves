@@ -15,47 +15,9 @@ aquired with this tool.
 
 ### Arduino code
 
-Reads the analog ports from the arduino board and prints them on the serial port:
+Create a file with the contents from [example/arduino.ino](https://github.com/zeehio/aves/blob/master/example/arduino.ino).
 
-```
-#include "Arduino.h"
-
-/* Sample time and serial port speed */
-/* ================================= */
-const uint32_t SAMPLE_TIME =  100UL; /* ms */
-const int SERIAL_PORT_BAUDS = 9600; /* bauds */
-
-unsigned long prevMillis = 0;
-
-void setup()
-{
-
-  Serial.begin(SERIAL_PORT_BAUDS);
-  analogReadResolution(10); /* 10 bits => 2^10 = 1024 levels in analogRead() */
-}
-
-void loop() {
-  unsigned long curMillis = millis();
-
-  if (curMillis - prevMillis >= SAMPLE_TIME) {
-    int sensor1 = analogRead(A0);
-    int sensor2 = analogRead(A1);
-    /* Check your Arduino specs:
-     * - The input range on the analog ports
-     * - The resolution (set above, some boards have 12 bits ADC capabilities)
-     * analogRead maps voltage from the input range (usually [0, 5] or [0, 3.3] volts)
-     * to integer values in the range [0, 1023] or [0, 4095] (depends on the resolution)
-     */
-    Serial.print(millis());
-    Serial.print(" ");
-    Serial.print(sensor1);
-    Serial.print(" ");
-    Serial.print(sensor2);
-    Serial.print("\n");
-    prevMillis = curMillis;
-  }
-}
-```
+This sample code reads the analog ports from the arduino board and prints them on the serial port.
 
 Take note of:
 - The SAMPLE_TIME (in ms): `100`
@@ -65,76 +27,54 @@ Take note of:
 
 ### Aves configuration
 
-Aves is configured using a `json` file. Save it as `config.json`.
+Aves is configured using a `yaml` file. Please take the example file from 
+[example/config.yaml](https://github.com/zeehio/aves/blob/master/example/config.yaml).
 
-- The `arduino` section:
-  * `baudrate`: The same as the arduino code.
-  * `timeout`: the seconds the python code will wait for data until it believes the serial connection has been dropped.
-  * `columns`: Describes the printed columns in the same order than in the arduino code. The conversion_factor is used to convert
-               the time from the arduino from milliseconds to seconds, and the sensor reads to Volts ( 5V/1023 = 0.004887586)
-- The `gui` defines the `axes` or subplots, and where will be placed. Each subplot sets which `points` from the captured data will contain.
+The yaml file has four sections:
 
-```
-{
-  "version": 1,
-  "input": {
-    "time_python": "time_python",
-    "arduino": {
-      "baudrate": 9600,
-      "timeout": 3,
-      "columns": [
-        {
-          "point": "time_arduino",
-          "conversion_factor": 1E-3
-        },
-        {
-          "point": "Sensor 1",
-          "conversion_factor": 0.004887586
-        },
-        {
-          "point": "Sensor 2",
-          "conversion_factor": 0.004887586
-        }
-      ]
-    }
-  },
-  "gui": {
-    "window_title": "Aves Demo",
-    "refresh_time_ms": 100,
-    "axes": {
-      "A subplot": {
-        "row": 0,
-        "col": 0,
-        "rowspan": 1,
-        "colspan": 1,
-        "points": ["Sensor 1"],
-        "options": {
-          "ylim": [-0.5, 5.5],
-          "ylabel": "Sensor 1 (V)"
-        }
-      },
-      "Another subplot": {
-        "row": 2,
-        "col": 0,
-        "rowspan": 1,
-        "colspan": 1,
-        "points": ["Sensor 2"],
-        "options": {
-          "ylim": [-0.5, 5.5],
-          "ylabel": "Sensor 2 (V)"
-        }
-      }
-    },
-   "sharexaxis": true,
-   "x_points": "time_arduino"
-  },
-  "output" : {
-    "columns": [
-      "time_python", "time_arduino", "Sensor 1", "Sensor 2"
-    ]
-  }
-}
-```
+- `version`: Just a value, must be 2.
+- `input`: Defines the aves input sources.
+- `gui`: Controls the real time plotting options
+- `output`: Defines the columns with sensor data that will be saved in a text file.
+
+#### The `input` section
+
+Aves uses two sources of information, the *arduino* and the *computer clock*.
+
+For the arduino input, we have multiple parameters:
+
+- `baudrate`: The baudrate specified in the arduino code.
+- `timeout`: The seconds the python code will wait for data until it believes the serial connection has been dropped.
+- `columns`: Aves must know what is the arduino printing on the serial port. `columns` is a list with as many elements as columns.
+    Each element is defined by `name` which gives a name to the column and `conversion_factor` that is used to convert the
+    number printed by the arduino to a magnitude meaninful for us. For instance, the conversion_factor is used in the example
+    to convert the time printed by the arduino from milliseconds to seconds (0.001), and the sensor reads (in the range 0-1023) to Volts
+    (in the range 0-5V): (5V/1023 = 0.004887586). The columns should be given in the order that they are printed by the arduino.
+
+The computer clock does not have an entry, as it has no options. However, we should remember that besides the columns defined
+in the `arduino` section, we also have the `time_computer` column, useful to synchronize our experiment with other information.
+
+
+#### The `gui` section
+
+The `gui` defines the visualization options, including:
+
+- The name of the column used in the `x` axis (`x_column`). It usually is the time given by the Arduino.
+- Whether or not the zoom for all the subplots should be shared. It is often convenient to have it shared (`zoom_all_together`).
+- The `axes`: The subplots available in the window. Imagine the subplots layed out in a grid. The first subplot (top-left) would be
+  in `row: 0`, `col: 0`. The subplot below the first would appear in `row: 1`, `col: 0`, etc. Subplots may span several rows or columns,
+  to make them larger, with the `rowspan` and `colspan` options, by default both set to `1`. Each subplot should plot at least one column
+  from the input, although more than one column can be plotted. The column names to be plotted for each subplot are given in `columns`.
+  Additional plotting options (limits, labels) can be given in `options`.
+
+Besides, there is the name of the window `window_title` and the `refresh_time_ms` that controls how often the GUI is refreshed.
+
+#### The `output` section
+
+Controls the columns that will be printed to the text file. Note how we have in the example 
+both the computer time and the arduino time printed.
+
+
 ### Run it:
 
     python3 -m aves.realtime --port *Serial port where your arduino is connected* --outfile "test.txt"
@@ -147,7 +87,7 @@ Check `python3 -m aves.realtime --help` for all other command line options, for 
 - `--port COM3` Use the `COM3` serial port
 - `--plot_every_n_samples 10` Wait for at least 10 samples to refresh the GUI
 - `--plot_win_size 200` Keep up to 200 samples in the plot (use 0 for unlimited)
-- `--config another.json` Use `another.json` as config file.
+- `--config another.yaml` Use `another.yaml` as config file.
 
 ![Image of the acquisition demo](example/demo.png)
 

@@ -54,7 +54,7 @@ def _parse_arguments():
                         type=int, default=200,
                         help="keeps in the plot the given number of samples " +
                              "(default:200 samples, use 0 for unlimited)""")
-    parser.add_argument('--config', dest='config_file', default='config.json',
+    parser.add_argument('--config', dest='config_file', default='config.yaml',
                         help="Arduino output columns, GUI layout and file format")
 
     # parse args

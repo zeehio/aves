@@ -34,7 +34,7 @@ def parse_arguments():
     # add expected arguments
     parser.add_argument("--filename", dest='filename', default=None,
                         help="file name to load")
-    parser.add_argument('--config', dest='config_file', default='config.json',
+    parser.add_argument('--config', dest='config_file', default='config.yaml',
                         help="Arduino output columns, GUI layout and file format")
     # parse args
     args = parser.parse_args()
@@ -55,8 +55,6 @@ def DataExplorer():
     # Parse config (plot layout and description of arduino output)
     config = parse_config(config_file=args.config_file)
     window = gui.SensorViewerGUI(config=config["gui"])
-    time_python = config["input"]["time_python"]
-    x_axis_data = config["gui"]["x_points"]
     with io.ReadSensorFile(filename=args.filename, config=config["output"]) as idev:
         samples = idev.readsamples()
     # Add samples to buffers

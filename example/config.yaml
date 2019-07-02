@@ -1,0 +1,49 @@
+---
+version: 2
+input:
+  arduino:
+    baudrate: 9600
+    timeout: 3
+    columns:
+    - name: time_arduino
+      conversion_factor: 0.001
+    - name: Sensor 1
+      conversion_factor: 0.004887586
+    - name: Sensor 2
+      conversion_factor: 0.004887586
+gui:
+  x_column: time_arduino
+  zoom_all_together: true
+  axes:
+    A subplot:
+      row: 0
+      col: 0
+      rowspan: 1
+      colspan: 1
+      columns:
+      - Sensor 1
+      options:
+        ylim:
+        - -0.5
+        - 5.5
+        ylabel: Sensor 1 (V)
+    Another subplot:
+      row: 1
+      col: 0
+      rowspan: 1
+      colspan: 1
+      columns:
+      - Sensor 2
+      options:
+        ylim:
+        - -0.5
+        - 5.5
+        ylabel: Sensor 2 (V)
+  window_title: Aves Demo
+  refresh_time_ms: 100
+output:
+  columns:
+  - time_computer
+  - time_arduino
+  - Sensor 1
+  - Sensor 2

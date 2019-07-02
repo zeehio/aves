@@ -66,7 +66,7 @@ class SensorViewerGUI(object):
         self.axes = None
         self.points = None
         self._plotshape = None
-        self._sharex = bool(self._config["sharexaxis"])
+        self._sharex = bool(self._config["zoom_all_together"])
         self._sharexaxis = None
         self._xlimits = None
         self._create_figure()
@@ -140,8 +140,8 @@ class SensorViewerGUI(object):
         points = dict()
         config_axes = self._config["axes"]
         for axis_name, axis_vals in config_axes.items():
-            point_ids = axis_vals.get("points", [])
-            point_legend = axis_vals.get("points_legend", point_ids)
+            point_ids = axis_vals.get("columns", [])
+            point_legend = axis_vals.get("columns_legend", point_ids)
             for points_id in point_ids:
                 points[points_id] = self.axes[axis_name].plot([], [])[0]
             if len(point_ids) > 1:
@@ -185,7 +185,7 @@ class SensorViewerGUI(object):
             data (dict): Iterables to copy the data from
 
         """
-        x_key = self._config["x_points"]
+        x_key = self._config["x_column"]
         for sensor in self.points.keys():
             self.points[sensor].set_data(data[x_key], data[sensor])
         self._xlimits = (data[x_key][0], data[x_key][-1])
