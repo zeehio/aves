@@ -1,7 +1,7 @@
 name = "aves"
 
 def parse_config(config_file="config.yaml"):
-	if config_file.endswith("json"):
+    if config_file.endswith("json"):
         raise ValueError("Please use aves < 3.0.0")
     import yaml
     with open(config_file) as stream:
