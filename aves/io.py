@@ -71,12 +71,14 @@ from aves.utils import mkdir_p
 
 TIME_COMPUTER = "time_computer"
 
+
 class ReadSensorAbstract(object):
     """ Abstract class to read a sensor sample.
 
     It has to implement an open method, a close method, a readsample method,
     a readsamples method and a stop_sampling property.
     """
+
     def __init__(self):
         self._stop_sampling = False
 
@@ -130,6 +132,7 @@ class ReadSensorFile(ReadSensorAbstract):
     Args:
         filename (str): File where the experiment has been saved
     """
+
     def __init__(self, filename, config):
         super(ReadSensorFile, self).__init__()
         self._filename = filename
@@ -176,6 +179,7 @@ class ReadSensorSerial(ReadSensorAbstract):
     """
     Reads the Arduino serial port
     """
+
     def __init__(self, port, config):
         """
         Reads the Arduino and optionally saves a copy of the readed data to a
@@ -255,10 +259,12 @@ class ReadSensorSerial(ReadSensorAbstract):
                 break
         return output
 
+
 class WriteSensorFile(object):
     """
     Writes samples to a file
     """
+
     def __init__(self, filename, config):
         """
             filename (str): File name to dump the data to.
@@ -300,6 +306,7 @@ class WriteSensorFile(object):
                 self._write_sample(sample)
         return
 
+
 class DataBuffers(object):
     """
     Stores the acquired data of all the sensors. It can be used to store
@@ -308,6 +315,7 @@ class DataBuffers(object):
     Args:
         maxlen (int): Keep only the latest maxlen points (default: None)
     """
+
     def __init__(self, maxlen=None):
         self.data = defaultdict(partial(deque, maxlen=maxlen))
         self.maxlen = maxlen
@@ -340,4 +348,3 @@ class DataBuffers(object):
     def extendleft(self, samples):
         for sample in samples:
             self.appendleft(sample)
-

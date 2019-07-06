@@ -7,11 +7,11 @@ This class:
 
  - Creates a figure that contains all the plots in
    :py:class:`SensorViewerGUI._create_figure`.
- - Creates an axes for each plot we want in 
-   :py:class:`SensorViewerGUI._create_axes`. Note that the labels are created at
-   :py:class:`SensorViewerGUI._set_axes_properties`.
- - Prepares the plots (initially without any data) that will appear on each axes
-   :py:class:`SensorViewerGUI._create_points`.
+ - Creates an axes for each plot we want in
+   :py:class:`SensorViewerGUI._create_axes`. Note that the labels are created
+   at :py:class:`SensorViewerGUI._set_axes_properties`.
+ - Prepares the plots (initially without any data) that will appear on each
+   axes :py:class:`SensorViewerGUI._create_points`.
 
 Additionally, this class provides an interface so the main program can:
 
@@ -43,10 +43,11 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 from functools import partial
 
+
 def _get_plot_shape(config_axes):
     plot_rows = 0
     plot_cols = 0
-    for k,v in config_axes.items():
+    for k, v in config_axes.items():
         r = v.get("row", 0) + v.get("rowspan", 1)
         c = v.get("col", 0) + v.get("colspan", 1)
         if r > plot_rows:
@@ -55,10 +56,12 @@ def _get_plot_shape(config_axes):
             plot_cols = c
     return (plot_rows, plot_cols)
 
+
 class SensorViewerGUI(object):
     """
     Creates and shows a figure with plots of the sensors
     """
+
     def __init__(self, config):
         # Make sure sharex is boolean
         self._config = config
@@ -82,10 +85,13 @@ class SensorViewerGUI(object):
         return self.axes.values()
 
     def while_loop(self, stop_condition, loop):
-        animate = partial(self.animate, stop_condition = stop_condition, loop = loop)
+        animate = partial(
+            self.animate,
+            stop_condition=stop_condition,
+            loop=loop)
         interval = self._config.get("refresh_time_ms", 100)
         self.ani = animation.FuncAnimation(self.fig, animate,
-                                           frames=None, interval=interval, repeat = False)
+                                           frames=None, interval=interval, repeat=False)
         plt.show()
 
     def _create_figure(self):
@@ -94,8 +100,9 @@ class SensorViewerGUI(object):
 
         """
         fig = plt.figure()
-        plt.style.use('ggplot')  #pylint: disable=E1101
-        fig.canvas.set_window_title(self._config.get("window_title", "Figure 1"))
+        plt.style.use('ggplot')  # pylint: disable=E1101
+        fig.canvas.set_window_title(
+            self._config.get("window_title", "Figure 1"))
         self.fig = fig
         return
 
@@ -124,11 +131,11 @@ class SensorViewerGUI(object):
         self._plotshape = _get_plot_shape(config_axes)
         self._sharexaxis = None
         for axis_name, axis_vals in config_axes.items():
-            row_col =  (axis_vals.get("row", 0), axis_vals.get("col", 0))
+            row_col = (axis_vals.get("row", 0), axis_vals.get("col", 0))
             rowspan = axis_vals.get("rowspan", 1)
             colspan = axis_vals.get("colspan", 1)
             axes[axis_name] = plt.subplot2grid(self._plotshape,
-                row_col, rowspan = rowspan, colspan = colspan, sharex = self._sharexaxis)
+                                               row_col, rowspan=rowspan, colspan=colspan, sharex=self._sharexaxis)
             if self._sharex and self._sharexaxis is None:
                 self._sharexaxis = axes[axis_name]
         self.axes = axes
@@ -146,7 +153,7 @@ class SensorViewerGUI(object):
                 points[points_id] = self.axes[axis_name].plot([], [])[0]
             if len(point_ids) > 1:
                 self.axes[axis_name].legend([points[x] for x in point_ids],
-                    point_legend)
+                                            point_legend)
         # Update points data with data from self.points:
         if self.points is None:
             self.points = points
@@ -208,6 +215,7 @@ class SensorViewerGUI(object):
         "Wait until the window is closed"
         plt.show(block=True)
 
+
 def filename_from_dialog(path):
     """ Creates a open file dialog and returns the filename"""
     root = None
@@ -238,5 +246,3 @@ def dirname_from_dialog(path):
         if root is not None:
             root.destroy()
     return directory
-
-

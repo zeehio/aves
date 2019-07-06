@@ -26,6 +26,7 @@ from aves import gui
 from aves import io
 from aves.utils import parse_config
 
+
 def parse_arguments():
     """
     Parses command line arguments
@@ -35,7 +36,7 @@ def parse_arguments():
     parser.add_argument("--filename", dest='filename', default=None,
                         help="file name to load")
     parser.add_argument('--config', dest='config_file', default='config.yaml',
-                        help="Arduino output columns, GUI layout and file format")
+                        help="Arduino columns, GUI layout and file format")
     # parse args
     args = parser.parse_args()
     # If no filename is given, show a dialog to load one
@@ -68,6 +69,6 @@ def DataExplorer():
         window.update()
     window.wait_until_close()
 
+
 if __name__ == '__main__':
     DataExplorer()
-

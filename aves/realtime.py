@@ -29,6 +29,7 @@ from aves import gui
 from aves import io
 from aves.utils import parse_config
 
+
 def _parse_arguments():
     """
     Parses command line arguments
@@ -69,7 +70,7 @@ def _parse_arguments():
 
 
 class RealTimeAnalysis(object):
-    def  __init__(self):
+    def __init__(self):
         # Parse input arguments, show help...
         self.args = _parse_arguments()
         # Parse config (plot layout and description of arduino output)
@@ -80,24 +81,28 @@ class RealTimeAnalysis(object):
         self.buffers = io.DataBuffers(maxlen=self.args.plot_win_size)
         # Use the Serial port or mock the serial port with a file:
         if os.path.isfile(self.args.port):
-            input_dev = partial(io.ReadSensorFile, filename=self.args.port, config=config["output"])
+            input_dev = partial(
+                io.ReadSensorFile, filename=self.args.port, config=config["output"])
         else:
-            input_dev = partial(io.ReadSensorSerial, port=self.args.port, config=config["input"])
+            input_dev = partial(io.ReadSensorSerial,
+                                port=self.args.port, config=config["input"])
         # Create the figure, axis and the GUI:
         if "gui" in config.keys():
             self.window = gui.SensorViewerGUI(config=config["gui"])
         else:
             self.window = None
         if "output" in config.keys():
-            output_dev = partial(io.WriteSensorFile, filename=self.args.outfile, config=config["output"])
+            output_dev = partial(
+                io.WriteSensorFile, filename=self.args.outfile, config=config["output"])
         else:
-            output_dev = lambda: None
+            def output_dev(): return None
         # With clause makes sure serial port is always properly closed
         with input_dev() as self.idev, output_dev() as self.outfile:
             if self.window is None:
                 self.while_loop()
             else:
-                self.window.while_loop(stop_condition = self.stop_condition, loop = self.loop)
+                self.window.while_loop(
+                    stop_condition=self.stop_condition, loop=self.loop)
 
     def while_loop(self):
         while not self.stop_condition():
@@ -109,12 +114,13 @@ class RealTimeAnalysis(object):
         #  - We have a GUI and we close the window OR
         #  - The input device has stopped reading
         return ((datetime.datetime.now()-self.start).total_seconds() > self.args.tmeas or
-            (self.window is not None and self.window.stop_sampling) or
-            self.idev.stop_sampling)
+                (self.window is not None and self.window.stop_sampling) or
+                self.idev.stop_sampling)
 
     def loop(self):
         # The GUI is updated every N samples. Read N consecutive samples
-        samples = self.idev.readsamples(num_samples=self.args.plot_every_n_samples)
+        samples = self.idev.readsamples(
+            num_samples=self.args.plot_every_n_samples)
         # Write samples to file
         if self.outfile is not None:
             self.outfile.write(samples)
@@ -130,4 +136,3 @@ class RealTimeAnalysis(object):
 
 if __name__ == '__main__':
     RealTimeAnalysis()
-

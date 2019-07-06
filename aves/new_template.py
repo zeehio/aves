@@ -14,6 +14,7 @@ from aves import gui
 
 VALID_TEMPLATES = ['simple_demo']
 
+
 def parse_arguments():
     """
     Parses command line arguments
@@ -29,7 +30,7 @@ def parse_arguments():
     args = parser.parse_args()
     if args.template not in VALID_TEMPLATES:
         raise ValueError(args.template + " is not a valid template (Valid " +
-            "templates are: " + ", ".join(VALID_TEMPLATES) + ")")
+                         "templates are: " + ", ".join(VALID_TEMPLATES) + ")")
     if args.destdir is None:
         args.destdir = gui.dirname_from_dialog(path=".")
     if not os.path.exists(args.destdir):
@@ -37,6 +38,7 @@ def parse_arguments():
     # Uncomment to debug the output of argparse:
     # raise ValueError(args)
     return args
+
 
 if __name__ == '__main__':
     args = parse_arguments()
@@ -63,4 +65,3 @@ if __name__ == '__main__':
                 sys.exit(1)
             copyfile(res_path, dst)
     print("All files were copied")
-
