@@ -34,7 +34,7 @@ aquired with this tool.
     - `--plot_win_size 200` Keep up to 200 samples in the plot (use 0 for unlimited)
     - `--config another.yaml` Use `another.yaml` as config file.
 
-    ![Image of the acquisition demo](example/demo.png)
+    ![Image of the acquisition demo](aves/templates/simple_demo/demo.png)
 
 4. Stop the acquisition (e.g. by closing the program)
 

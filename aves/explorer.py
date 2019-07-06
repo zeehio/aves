@@ -24,7 +24,7 @@ import argparse
 
 from aves import gui
 from aves import io
-from aves import parse_config
+from aves.utils import parse_config
 
 def parse_arguments():
     """

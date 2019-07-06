@@ -27,7 +27,7 @@ from functools import partial
 
 from aves import gui
 from aves import io
-from aves import parse_config
+from aves.utils import parse_config
 
 def _parse_arguments():
     """
