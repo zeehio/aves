@@ -13,31 +13,45 @@ aquired with this tool.
 - We will use an Arduino to send data through the serial port.
 - We will use *aves* to acquire, represent and record the data.
 
-### Arduino code
+1. Prepare the arduino code and the config.yaml file for aves:
 
-Create a file with the contents from [example/arduino.ino](https://github.com/zeehio/aves/blob/master/example/arduino.ino).
+       python3 -m aves.new_template --destdir newfolder
 
-This sample code reads the analog ports from the arduino board and prints them on the serial port.
+2. `newfolder` will be created, open the `arduino.ino` file and compile 
+  and upload it to the arduino.
 
-Take note of:
-- The SAMPLE_TIME (in ms): `100`
-- The Serial port speed (in bauds): `9600`
-- The Analog Read Resolution (in bits): `10`
-- The input range of the analog ports (in volts): `(check your board, usually 5V or 3.3V)`
+3. Run the demo code
 
-### Aves configuration
+        python3 -m aves.realtime --port *Serial port where your arduino is connected* --outfile "test.txt"
 
-Aves is configured using a `yaml` file. Please take the example file from 
-[example/config.yaml](https://github.com/zeehio/aves/blob/master/example/config.yaml).
+    Check `python3 -m aves.realtime --help` for all other command line options, for instance:
 
-The yaml file has four sections:
+    - `--no-save` Do not save the captured data to a file
+    - `--outfile test.txt` Save the capture data to `test.txt`
+    - `--tmeas 600` Capture data for 600 seconds maximum (default: unlimited)
+    - `--port COM3` Use the `COM3` serial port
+    - `--plot_every_n_samples 10` Wait for at least 10 samples to refresh the GUI
+    - `--plot_win_size 200` Keep up to 200 samples in the plot (use 0 for unlimited)
+    - `--config another.yaml` Use `another.yaml` as config file.
+
+    ![Image of the acquisition demo](example/demo.png)
+
+4. Stop the acquisition (e.g. by closing the program)
+
+5. View the results:
+
+        python3 -m aves.explorer --filename "test.txt"
+
+## Aves configuration
+
+Aves is configured using a `yaml` file with four sections:
 
 - `version`: Just a value, must be 2.
 - `input`: Defines the aves input sources.
 - `gui`: Controls the real time plotting options
 - `output`: Defines the columns with sensor data that will be saved in a text file.
 
-#### The `input` section
+### The `input` section
 
 Aves uses two sources of information, the *arduino* and the *computer clock*.
 
@@ -55,7 +69,7 @@ The computer clock does not have an entry, as it has no options. However, we sho
 in the `arduino` section, we also have the `time_computer` column, useful to synchronize our experiment with other information.
 
 
-#### The `gui` section
+### The `gui` section
 
 The `gui` defines the visualization options, including:
 
@@ -69,31 +83,10 @@ The `gui` defines the visualization options, including:
 
 Besides, there is the name of the window `window_title` and the `refresh_time_ms` that controls how often the GUI is refreshed.
 
-#### The `output` section
+### The `output` section
 
 Controls the columns that will be printed to the text file. Note how we have in the example 
 both the computer time and the arduino time printed.
-
-
-### Run it:
-
-    python3 -m aves.realtime --port *Serial port where your arduino is connected* --outfile "test.txt"
-
-Check `python3 -m aves.realtime --help` for all other command line options, for instance:
-
-- `--no-save` Do not save the captured data to a file
-- `--outfile test.txt` Save the capture data to `test.txt`
-- `--tmeas 600` Capture data for 600 seconds maximum (default: unlimited)
-- `--port COM3` Use the `COM3` serial port
-- `--plot_every_n_samples 10` Wait for at least 10 samples to refresh the GUI
-- `--plot_win_size 200` Keep up to 200 samples in the plot (use 0 for unlimited)
-- `--config another.yaml` Use `another.yaml` as config file.
-
-![Image of the acquisition demo](example/demo.png)
-
-### Explore the acquired data:
-
-    python3 -m aves.explorer --filename "test.txt"
 
 
 ## Known works using aves

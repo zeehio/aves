@@ -35,9 +35,9 @@ except ImportError:
     import tkinter
 
 try:
-    from tkFileDialog import askopenfilename
+    from tkFileDialog import askopenfilename, askdirectory
 except ImportError:
-    from tkinter.filedialog import askopenfilename
+    from tkinter.filedialog import askopenfilename, askdirectory
 
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -210,12 +210,33 @@ class SensorViewerGUI(object):
 
 def filename_from_dialog(path):
     """ Creates a open file dialog and returns the filename"""
-    # we don't want a full GUI, so keep the root window from appearing
-    root = tkinter.Tk()
-    # show an "Open" dialog box and return the path to the selected file
-    filename = askopenfilename(initialdir=path)
-    if len(filename) == 0:
-        raise ValueError("No filename selected")
-    root.destroy()
+    root = None
+    try:
+        # we don't want a full GUI, so keep the root window from appearing
+        root = tkinter.Tk()
+        # show an "Open" dialog box and return the path to the selected file
+        filename = askopenfilename(initialdir=path)
+        if len(filename) == 0:
+            raise ValueError("No filename selected")
+    finally:
+        if root is not None:
+            root.destroy()
     return filename
+
+
+def dirname_from_dialog(path):
+    """ Creates a open directory dialog and returns the directory path"""
+    root = None
+    try:
+        # we don't want a full GUI, so keep the root window from appearing
+        root = tkinter.Tk()
+        # show an "Open" dialog box and return the path to the selected file
+        directory = askdirectory(initialdir=path)
+        if len(directory) == 0:
+            raise ValueError("No directory selected")
+    finally:
+        if root is not None:
+            root.destroy()
+    return directory
+
 

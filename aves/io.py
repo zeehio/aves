@@ -67,19 +67,9 @@ from collections import defaultdict
 from functools import partial
 import serial
 
-TIME_COMPUTER = "time_computer"
+from aves.utils import mkdir_p
 
-def mkdir_p(path):
-    "Creates a directory, recursively if necessary"
-    if path == "":
-        return
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
+TIME_COMPUTER = "time_computer"
 
 class ReadSensorAbstract(object):
     """ Abstract class to read a sensor sample.
