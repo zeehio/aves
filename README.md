@@ -15,13 +15,14 @@ aquired with this tool.
 
 1. Prepare the arduino code and the config.yaml file for aves:
 
-       python3 -m aves.new_template --destdir newfolder
+       python3 -m aves.new_template --destdir new_project_dir
 
-2. `newfolder` will be created, open the `arduino.ino` file and compile 
-  and upload it to the arduino.
+2. `new_project_dir` will be created, open the `arduino.ino` file, compile
+   it and upload it to the arduino.
 
 3. Run the demo code
 
+        cd new_project_dir
         python3 -m aves.realtime --port *Serial port where your arduino is connected* --outfile "test.txt"
 
     ![Image of the acquisition demo](aves/templates/simple_demo/demo.png)
