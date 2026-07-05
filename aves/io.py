@@ -149,12 +149,15 @@ class ReadSensorFile(ReadSensorAbstract):
 
     def readsample(self):
         sample = dict()
-        line = '#'
-        while line[0] == '#':
+        line = ''
+        while True:
             line = self._file.readline()
             if len(line) == 0:
                 self._stop_sampling = True
                 return None
+            if line.startswith('#') or line.strip() == '':
+                continue
+            break
         fields = line.split()
 
         data_acq = [fields[0]] + [float(val) for val in fields[1:]]

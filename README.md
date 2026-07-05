@@ -17,7 +17,7 @@ aquired with this tool.
 
        python3 -m aves.new_template --destdir new_project_dir
 
-2. `new_project_dir` will be created, open the `arduino.ino` file, compile
+2. `new_project_dir` will be created, open the `simple_demo.ino` file, compile
    it and upload it to the arduino.
 
 3. Run the demo code
