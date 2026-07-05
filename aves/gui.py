@@ -101,8 +101,9 @@ class SensorViewerGUI(object):
         """
         fig = plt.figure()
         plt.style.use('ggplot')  # pylint: disable=E1101
-        fig.canvas.set_window_title(
-            self._config.get("window_title", "Figure 1"))
+        if fig.canvas.manager is not None:
+            fig.canvas.manager.set_window_title(
+                self._config.get("window_title", "Figure 1"))
         self.fig = fig
         return
 
