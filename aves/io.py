@@ -58,7 +58,6 @@ the online analysis (plots with too many points also consume more memory).
 
 # Based on code from Mahesh Venkitachalam available at electronut.in
 
-from __future__ import print_function
 import os
 import errno
 from collections import deque

@@ -1,8 +1,4 @@
-try:
-    import importlib.resources as importlib_res
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
-    import importlib_resources as importlib_res
+import importlib.resources as importlib_res
 
 import argparse
 import os
@@ -10,6 +6,7 @@ from shutil import copyfile
 import sys
 import yaml
 from aves import gui
+from aves.utils import mkdir_p
 
 
 VALID_TEMPLATES = ['simple_demo']

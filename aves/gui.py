@@ -29,15 +29,8 @@ It gives further options to:
 """
 
 
-try:
-    import Tkinter as tkinter
-except ImportError:
-    import tkinter
-
-try:
-    from tkFileDialog import askopenfilename, askdirectory
-except ImportError:
-    from tkinter.filedialog import askopenfilename, askdirectory
+import tkinter
+from tkinter.filedialog import askopenfilename, askdirectory
 
 import matplotlib.pyplot as plt
 from matplotlib import animation
