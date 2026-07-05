@@ -32,7 +32,28 @@ def test_parse_config_valid(tmp_path):
 def test_parse_config_rejects_wrong_version(tmp_path):
     config_file = tmp_path / "config.yaml"
     config_file.write_text("version: 1\n")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="version"):
+        parse_config(config_file=str(config_file))
+
+
+def test_parse_config_rejects_missing_version(tmp_path):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("foo: bar\n")
+    with pytest.raises(ValueError, match="version"):
+        parse_config(config_file=str(config_file))
+
+
+def test_parse_config_rejects_non_mapping_yaml(tmp_path):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("- just\n- a\n- list\n")
+    with pytest.raises(ValueError, match="mapping"):
+        parse_config(config_file=str(config_file))
+
+
+def test_parse_config_rejects_invalid_yaml(tmp_path):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("version: 2\n  bad indent: [1, 2\n")
+    with pytest.raises(ValueError, match="YAML"):
         parse_config(config_file=str(config_file))
 
 
