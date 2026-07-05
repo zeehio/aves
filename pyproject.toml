@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "aves"
@@ -26,11 +26,8 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/zeehio/aves"
 
-[tool.setuptools.dynamic]
-version = { attr = "aves.__version__" }
+[tool.hatch.version]
+path = "aves/__init__.py"
 
-[tool.setuptools.packages.find]
-include = ["aves*"]
-
-[tool.setuptools.package-data]
-aves = ["templates/*/*"]
+[tool.hatch.build.targets.wheel]
+packages = ["aves"]
