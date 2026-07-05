@@ -17,9 +17,6 @@ It does two things:
      * Waits until the user closes the window.
 """
 
-# Make python2 use print as a function (py3 compatibility)
-from __future__ import print_function
-
 import argparse
 
 from aves import gui

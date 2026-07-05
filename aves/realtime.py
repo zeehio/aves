@@ -17,9 +17,6 @@ It does two things:
        the plot, updating it.
 """
 
-# Make python2 use print as a function (for python3 compatibility)
-from __future__ import print_function
-
 import os
 import datetime
 import argparse

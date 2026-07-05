@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aves"
+dynamic = ["version"]
+description = "Acquisition, Visualization and Exploration Software"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Sergio Oller Moreno", email = "sergioller@gmail.com" },
+]
+requires-python = ">=3.8"
+dependencies = [
+    "pyserial",
+    "matplotlib",
+    "pyyaml",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/zeehio/aves"
+
+[tool.setuptools.dynamic]
+version = { attr = "aves.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["aves*"]
+
+[tool.setuptools.package-data]
+aves = ["templates/*/*"]
