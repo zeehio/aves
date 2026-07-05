@@ -113,7 +113,7 @@ def test_readsample_returns_none_at_eof(tmp_path):
     assert second is None
 
 
-def _make_serial_reader(columns):
+def _make_serial_reader(columns, **kwargs):
     config = {
         "arduino": {
             "baudrate": 9600,
@@ -121,7 +121,7 @@ def _make_serial_reader(columns):
             "columns": columns,
         }
     }
-    return ReadSensorSerial(port="/dev/fake", config=config)
+    return ReadSensorSerial(port="/dev/fake", config=config, **kwargs)
 
 
 def test_readsensorserial_skips_garbage_and_logs_warning(caplog):
@@ -148,3 +148,36 @@ def test_readsensorserial_warns_on_field_count_mismatch(caplog):
     assert sample["a"] == 1.0
     assert sample["b"] == 4.0
     assert "expecting 2" in caplog.text
+
+
+def test_readsensorserial_gives_up_after_max_consecutive_garbage_lines(caplog):
+    reader = _make_serial_reader(
+        [{"name": "a", "conversion_factor": 1.0}],
+        max_consecutive_garbage_lines=3)
+    reader._inputdata = FakeSerialPort([b"garbage\n", b"garbage\n", b"garbage\n"])
+
+    with caplog.at_level("WARNING"):
+        sample = reader.readsample()
+
+    assert sample is None
+    assert reader.stop_sampling
+    assert "Giving up after 3 consecutive unusable lines" in caplog.text
+
+
+def test_readsensorserial_resets_garbage_count_after_a_good_sample(caplog):
+    """A run of garbage shorter than the limit, followed by a good sample,
+    must not count towards the give-up threshold on the next call."""
+    reader = _make_serial_reader(
+        [{"name": "a", "conversion_factor": 1.0}],
+        max_consecutive_garbage_lines=2)
+    reader._inputdata = FakeSerialPort([
+        b"garbage\n", b"1.0\n",  # first call: 1 garbage line, then recovers
+        b"garbage\n", b"2.0\n",  # second call: same again
+    ])
+
+    first = reader.readsample()
+    second = reader.readsample()
+
+    assert first["a"] == 1.0
+    assert second["a"] == 2.0
+    assert not reader.stop_sampling
