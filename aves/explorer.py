@@ -36,9 +36,13 @@ def parse_arguments():
                         help="Arduino columns, GUI layout and file format")
     # parse args
     args = parser.parse_args()
-    # If no filename is given, show a dialog to load one
+    # If no filename is given, show a dialog to load one. Only needed as a
+    # fallback when --filename is omitted, so this stays a local import: it's
+    # the only thing in this module that needs Tk installed (SensorViewerGUI
+    # itself only needs matplotlib).
     if args.filename is None:
-        args.filename = gui.filename_from_dialog(path="data")
+        from aves import dialogs
+        args.filename = dialogs.filename_from_dialog(path="data")
     # Uncomment to debug the output of argparse:
     # raise ValueError(args)
     return args
