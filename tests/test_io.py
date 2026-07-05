@@ -1,4 +1,14 @@
-from aves.io import DataBuffers, ReadSensorFile, WriteSensorFile
+from aves.io import DataBuffers, ReadSensorFile, ReadSensorSerial, WriteSensorFile
+
+
+class FakeSerialPort:
+    """Stands in for a pyserial Serial object: readline() pops canned lines."""
+
+    def __init__(self, lines):
+        self._lines = list(lines)
+
+    def readline(self):
+        return self._lines.pop(0)
 
 
 def test_databuffers_append_and_appendleft():
@@ -101,3 +111,40 @@ def test_readsample_returns_none_at_eof(tmp_path):
 
     assert first == {"a": "1", "b": 2.0}
     assert second is None
+
+
+def _make_serial_reader(columns):
+    config = {
+        "arduino": {
+            "baudrate": 9600,
+            "timeout": 1,
+            "columns": columns,
+        }
+    }
+    return ReadSensorSerial(port="/dev/fake", config=config)
+
+
+def test_readsensorserial_skips_garbage_and_logs_warning(caplog):
+    reader = _make_serial_reader([{"name": "a", "conversion_factor": 1.0}])
+    reader._inputdata = FakeSerialPort([b"not-a-number\n", b"3.0\n"])
+
+    with caplog.at_level("WARNING"):
+        sample = reader.readsample()
+
+    assert sample["a"] == 3.0
+    assert "Discarding garbage" in caplog.text
+
+
+def test_readsensorserial_warns_on_field_count_mismatch(caplog):
+    reader = _make_serial_reader([
+        {"name": "a", "conversion_factor": 1.0},
+        {"name": "b", "conversion_factor": 2.0},
+    ])
+    reader._inputdata = FakeSerialPort([b"1.0\n", b"1.0\t2.0\n"])
+
+    with caplog.at_level("WARNING"):
+        sample = reader.readsample()
+
+    assert sample["a"] == 1.0
+    assert sample["b"] == 4.0
+    assert "expecting 2" in caplog.text

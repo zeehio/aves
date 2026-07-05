@@ -60,6 +60,7 @@ the online analysis (plots with too many points also consume more memory).
 
 import os
 import errno
+import logging
 from collections import deque
 import datetime
 from collections import defaultdict
@@ -67,6 +68,8 @@ from functools import partial
 import serial
 
 from aves.utils import mkdir_p
+
+logger = logging.getLogger(__name__)
 
 TIME_COMPUTER = "time_computer"
 
@@ -236,12 +239,12 @@ class ReadSensorSerial(ReadSensorAbstract):
                     break
                 data_acq = [float(val) for val in line.split()]
                 if len(data_acq) != len(self._fields):
-                    print("Received {} fields, expecting {}.".
-                          format(len(data_acq), len(self._fields)))
-                    print(line)
+                    logger.warning(
+                        "Received %d fields, expecting %d: %r",
+                        len(data_acq), len(self._fields), line)
                     try_again = True
             except (UnicodeDecodeError, ValueError):
-                print("Discarding garbage in serial port")
+                logger.warning("Discarding garbage in serial port: %r", line)
                 try_again = True
 
         if self._stop_sampling:
