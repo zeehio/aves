@@ -15,16 +15,21 @@ This class:
 
 Additionally, this class provides an interface so the main program can:
 
- - Set the data values to be plotted :py:class:`SensorViewerGUI.set_data`.
- - Refresh the window with the latest data available
-   :py:class:`SensorViewerGUI.update`. When updating, a small delay is
+ - Draw the latest data :py:class:`SensorViewerGUI.render`. A small delay is
    introduced so the user can move and resize the window interactively.
+ - Drive a loop with :py:class:`SensorViewerGUI.run`, calling back into a
+   caller-supplied function on every refresh until it says to stop or the
+   window is closed.
 
 It gives further options to:
 
  - Optionally use the same ``time`` axis on all the plots.
- - Provide feedback on the close button to make the program stop sampling.
+ - Report whether the window has been closed by the user
+   (:py:class:`SensorViewerGUI.closed`).
  - Keep the window of the program open until it is closed by the user
+
+This module intentionally knows nothing about how data is acquired --
+see :py:mod:`aves.acquisition` for that.
 
 """
 
@@ -34,7 +39,6 @@ from tkinter.filedialog import askopenfilename, askdirectory
 
 import matplotlib.pyplot as plt
 from matplotlib import animation
-from functools import partial
 
 
 def _get_plot_shape(config_axes):
@@ -70,20 +74,21 @@ class SensorViewerGUI(object):
         self._create_points()
         self.fig.show()
 
-    def animate(self, framenum, stop_condition, loop):
-        if stop_condition():
-            self.ani.event_source.stop()
-            return None
-        loop()
-        return self.axes.values()
+    def run(self, tick):
+        """
+        Drives the GUI's refresh timer, calling ``tick()`` on every frame
+        until it returns a falsy value or the window is closed by the user.
 
-    def while_loop(self, stop_condition, loop):
-        animate = partial(
-            self.animate,
-            stop_condition=stop_condition,
-            loop=loop)
+        ``tick`` is entirely opaque to this method: it may read data, write
+        files, check stop conditions -- this class does not need to know.
+        """
+        def _animate(framenum):
+            if self.closed or not tick():
+                self.ani.event_source.stop()
+                return []
+            return list(self.axes.values())
         interval = self._config.get("refresh_time_ms", 100)
-        self.ani = animation.FuncAnimation(self.fig, animate,
+        self.ani = animation.FuncAnimation(self.fig, _animate,
                                            frames=None, interval=interval, repeat=False)
         plt.show()
 
@@ -178,31 +183,27 @@ class SensorViewerGUI(object):
             axis.set_xlim(xlimits)
         return
 
-    def set_data(self, data):
+    def render(self, data):
         """
-        Sets the data to be plotted
+        Draws the given data and refreshes the window.
 
         Args:
-            data (dict): Iterables to copy the data from
+            data (dict): Iterables to copy the data from, keyed by column
+                name (as configured in ``x_column`` and each axis'
+                ``columns``).
 
         """
         x_key = self._config["x_column"]
         for sensor in self.points.keys():
             self.points[sensor].set_data(data[x_key], data[sensor])
         self._xlimits = (data[x_key][0], data[x_key][-1])
-        return
-
-    def update(self):
-        """
-        Update all the GUI elements (refresh)
-        """
+        self.set_xlim()
         self.fig.canvas.draw()
         plt.pause(0.025)
 
     @property
-    def stop_sampling(self):
-        "Let the acquisition system know that we don't want to sample more"
-        # if figure does not exist (is closed) return True to stop sampling
+    def closed(self):
+        "Whether the window has been closed by the user"
         return not plt.fignum_exists(self.fig.number)
 
     def wait_until_close(self):  # pylint: disable=R0201

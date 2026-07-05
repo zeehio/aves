@@ -60,10 +60,7 @@ def DataExplorer():
     buffers.extend(samples)
     # Copy buffer to gui
     if buffers.data:
-        window.set_data(buffers.data)
-        # Update limits on the x axis in the GUI:
-        window.set_xlim()
-        window.update()
+        window.render(buffers.data)
     window.wait_until_close()
 
 
