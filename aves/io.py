@@ -329,8 +329,10 @@ class DataBuffers(object):
             if maxlen is None:
                 data[name] = deque(values)
             else:
-                values = list(values)[0:maxlen]
+                values = list(values)[-maxlen:]
                 data[name] = deque(values, maxlen=maxlen)
+        self.data = data
+        self.maxlen = maxlen
         return
 
     def appendleft(self, sample):

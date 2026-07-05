@@ -44,7 +44,7 @@ if __name__ == '__main__':
     args = parse_arguments()
     pkg = 'aves.templates.' + args.template
     skeleton_stream = importlib_res.open_text(pkg, 'skeleton.yaml')
-    res_to_copy = yaml.load(skeleton_stream)
+    res_to_copy = yaml.safe_load(skeleton_stream)
     print("Copying files from template: " + args.template +
           " to " + args.destdir)
     res_that_already_exist = []

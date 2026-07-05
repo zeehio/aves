@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/zeehio/aves",
     packages=['aves'],
-    package_data={'aves': 'templates/*/*'},
+    package_data={'aves': ['templates/*/*']},
     install_requires=[
           'pyserial',
           'matplotlib',
