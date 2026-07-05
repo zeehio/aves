@@ -185,7 +185,14 @@ class ReadSensorSerial(ReadSensorAbstract):
     Reads the Arduino serial port
     """
 
-    def __init__(self, port, config):
+    #: Give up (and set stop_sampling) after this many consecutive unusable
+    #: lines (garbage, or the wrong number of fields), instead of retrying
+    #: forever -- a wrong baud rate or a disconnected sensor would otherwise
+    #: hang readsample() indefinitely.
+    DEFAULT_MAX_CONSECUTIVE_GARBAGE_LINES = 20
+
+    def __init__(self, port, config,
+                 max_consecutive_garbage_lines=DEFAULT_MAX_CONSECUTIVE_GARBAGE_LINES):
         """
         Reads the Arduino and optionally saves a copy of the readed data to a
         file.
@@ -193,6 +200,8 @@ class ReadSensorSerial(ReadSensorAbstract):
         Args:
             port (str): Serial port to read data from.
             timeout (int): Seconds until a read value times out
+            max_consecutive_garbage_lines (int): Give up after this many
+                consecutive unusable lines in a row (default: 20).
 
         Details:
             Each sample in the arduino is printed through the serial port
@@ -210,6 +219,7 @@ class ReadSensorSerial(ReadSensorAbstract):
         self.port = port
         self._baudrate = config["arduino"]["baudrate"]
         self._timeout = config["arduino"]["timeout"]
+        self._max_consecutive_garbage_lines = max_consecutive_garbage_lines
         self._inputdata = None
         return
 
@@ -230,6 +240,7 @@ class ReadSensorSerial(ReadSensorAbstract):
         # in the serial port in Windows @soller
         sample = dict()
         try_again = True
+        garbage_lines = 0
         while try_again:
             try:
                 line = self._inputdata.readline()
@@ -246,6 +257,16 @@ class ReadSensorSerial(ReadSensorAbstract):
             except (UnicodeDecodeError, ValueError):
                 logger.warning("Discarding garbage in serial port: %r", line)
                 try_again = True
+
+            if try_again:
+                garbage_lines += 1
+                if garbage_lines >= self._max_consecutive_garbage_lines:
+                    logger.error(
+                        "Giving up after %d consecutive unusable lines from "
+                        "the serial port; check the baud rate and wiring.",
+                        garbage_lines)
+                    self._stop_sampling = True
+                    break
 
         if self._stop_sampling:
             return None
