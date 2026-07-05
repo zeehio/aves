@@ -67,7 +67,7 @@ from collections import defaultdict
 from functools import partial
 import serial
 
-from aves.utils import mkdir_p
+from aves.utils import mkdir_p, require_keys
 
 logger = logging.getLogger(__name__)
 
@@ -137,9 +137,10 @@ class ReadSensorFile(ReadSensorAbstract):
 
     def __init__(self, filename, config):
         super(ReadSensorFile, self).__init__()
+        require_keys(config, ["columns"], "config.yaml's 'output' section")
         self._filename = filename
         self._file = None
-        self._file_columns = config.get("columns", [])
+        self._file_columns = config["columns"]
         return
 
     def open(self):
@@ -212,13 +213,21 @@ class ReadSensorSerial(ReadSensorAbstract):
             raise ValueError("port missing. No input given")
         # Initialize parent class:
         super(ReadSensorSerial, self).__init__()
+        arduino_config = require_keys(
+            config, ["arduino"], "config.yaml's 'input' section")["arduino"]
+        require_keys(
+            arduino_config, ["columns", "baudrate", "timeout"],
+            "config.yaml's 'input.arduino' section")
         # Fields:
         self._fields = []
-        for column in config["arduino"]["columns"]:
+        for i, column in enumerate(arduino_config["columns"]):
+            require_keys(
+                column, ["name", "conversion_factor"],
+                f"config.yaml's 'input.arduino.columns[{i}]' entry")
             self._fields.append((column["name"], column["conversion_factor"]))
         self.port = port
-        self._baudrate = config["arduino"]["baudrate"]
-        self._timeout = config["arduino"]["timeout"]
+        self._baudrate = arduino_config["baudrate"]
+        self._timeout = arduino_config["timeout"]
         self._max_consecutive_garbage_lines = max_consecutive_garbage_lines
         self._inputdata = None
         return
@@ -295,8 +304,9 @@ class WriteSensorFile(object):
         """
             filename (str): File name to dump the data to.
         """
+        require_keys(config, ["columns"], "config.yaml's 'output' section")
         self.filename = filename
-        self._file_columns = config.get("columns", [])
+        self._file_columns = config["columns"]
         self._filepointer = None
         return
 

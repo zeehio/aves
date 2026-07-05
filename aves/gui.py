@@ -41,6 +41,8 @@ installed.
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
+from aves.utils import require_keys
+
 
 def _get_plot_shape(config_axes):
     plot_rows = 0
@@ -61,6 +63,9 @@ class SensorViewerGUI(object):
     """
 
     def __init__(self, config):
+        require_keys(
+            config, ["zoom_all_together", "axes", "x_column"],
+            "config.yaml's 'gui' section")
         # Make sure sharex is boolean
         self._config = config
         self.fig = None
@@ -171,7 +176,7 @@ class SensorViewerGUI(object):
         """
         config_axes = self._config["axes"]
         for (axis_name, ax_opt) in config_axes.items():
-            self.axes[axis_name].set(**ax_opt["options"])
+            self.axes[axis_name].set(**ax_opt.get("options", {}))
         return
 
     def set_xlim(self, xlimits=None):

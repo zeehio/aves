@@ -67,3 +67,23 @@ def test_gui_closed_reflects_figure_lifecycle(gui_window):
     assert not gui_window.closed
     plt.close(gui_window.fig)
     assert gui_window.closed
+
+
+def test_gui_requires_top_level_keys():
+    with pytest.raises(ValueError, match="'gui' section.*axes, x_column"):
+        SensorViewerGUI(config={"zoom_all_together": True})
+
+
+def test_gui_axis_without_options_defaults_to_no_extra_styling():
+    config = {
+        "x_column": "t",
+        "zoom_all_together": False,
+        "axes": {
+            "A": {"columns": ["a"]},  # no "options" key at all
+        },
+    }
+    window = SensorViewerGUI(config=config)
+    try:
+        assert set(window.points.keys()) == {"a"}
+    finally:
+        plt.close(window.fig)

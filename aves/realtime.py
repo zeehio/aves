@@ -26,7 +26,7 @@ import contextlib
 from aves import gui
 from aves import io
 from aves.acquisition import Acquisition
-from aves.utils import parse_config
+from aves.utils import parse_config, require_keys
 
 
 def _parse_arguments():
@@ -71,7 +71,14 @@ def _parse_arguments():
 def _build_input_device(args, config):
     """Reads from the serial port, or replays a previously recorded file."""
     if os.path.isfile(args.port):
+        require_keys(
+            config, ["output"],
+            "config.yaml (its 'output' section describes the columns of "
+            "the recorded file being replayed as input)")
         return io.ReadSensorFile(filename=args.port, config=config["output"])
+    require_keys(
+        config, ["input"],
+        "config.yaml (needed to read live from the serial port)")
     return io.ReadSensorSerial(port=args.port, config=config["input"])
 
 

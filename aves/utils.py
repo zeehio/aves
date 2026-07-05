@@ -17,6 +17,24 @@ def mkdir_p(path):
             raise
 
 
+def require_keys(mapping, keys, name):
+    """
+    Ensures ``mapping`` is a dict containing every key in ``keys``, raising
+    a clear ``ValueError`` (naming ``name`` and the missing keys) instead of
+    a bare ``KeyError`` deep inside whatever reads the missing key next.
+
+    Returns ``mapping`` unchanged, so this can be used inline:
+
+        arduino = require_keys(config, ["arduino"], "...")["arduino"]
+    """
+    if not isinstance(mapping, dict):
+        raise ValueError(f"{name} must be a mapping, got {type(mapping).__name__}")
+    missing = [key for key in keys if key not in mapping]
+    if missing:
+        raise ValueError(f"{name} is missing required key(s): {', '.join(missing)}")
+    return mapping
+
+
 def parse_config(config_file="config.yaml"):
     if config_file.endswith("json"):
         raise ValueError("Please use aves < 3.0.0")

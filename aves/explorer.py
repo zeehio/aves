@@ -21,7 +21,7 @@ import argparse
 
 from aves import gui
 from aves import io
-from aves.utils import parse_config
+from aves.utils import parse_config, require_keys
 
 
 def parse_arguments():
@@ -56,6 +56,7 @@ def DataExplorer():
     args = parse_arguments()
     # Parse config (plot layout and description of arduino output)
     config = parse_config(config_file=args.config_file)
+    require_keys(config, ["gui", "output"], "config.yaml")
     window = gui.SensorViewerGUI(config=config["gui"])
     with io.ReadSensorFile(filename=args.filename, config=config["output"]) as idev:
         samples = idev.readsamples()
