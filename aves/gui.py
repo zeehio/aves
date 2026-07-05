@@ -29,13 +29,14 @@ It gives further options to:
  - Keep the window of the program open until it is closed by the user
 
 This module intentionally knows nothing about how data is acquired --
-see :py:mod:`aves.acquisition` for that.
+see :py:mod:`aves.acquisition` for that. It also has no dependency on
+Tk: the "open file"/"choose directory" dialogs used by the CLI entry
+points live in :py:mod:`aves.dialogs` instead, so this module can be
+imported and tested (e.g. with matplotlib's Agg backend) without Tk
+installed.
 
 """
 
-
-import tkinter
-from tkinter.filedialog import askopenfilename, askdirectory
 
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -209,35 +210,3 @@ class SensorViewerGUI(object):
     def wait_until_close(self):  # pylint: disable=R0201
         "Wait until the window is closed"
         plt.show(block=True)
-
-
-def filename_from_dialog(path):
-    """ Creates a open file dialog and returns the filename"""
-    root = None
-    try:
-        # we don't want a full GUI, so keep the root window from appearing
-        root = tkinter.Tk()
-        # show an "Open" dialog box and return the path to the selected file
-        filename = askopenfilename(initialdir=path)
-        if len(filename) == 0:
-            raise ValueError("No filename selected")
-    finally:
-        if root is not None:
-            root.destroy()
-    return filename
-
-
-def dirname_from_dialog(path):
-    """ Creates a open directory dialog and returns the directory path"""
-    root = None
-    try:
-        # we don't want a full GUI, so keep the root window from appearing
-        root = tkinter.Tk()
-        # show an "Open" dialog box and return the path to the selected file
-        directory = askdirectory(initialdir=path)
-        if len(directory) == 0:
-            raise ValueError("No directory selected")
-    finally:
-        if root is not None:
-            root.destroy()
-    return directory

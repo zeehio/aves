@@ -5,7 +5,6 @@ import os
 from shutil import copyfile
 import sys
 import yaml
-from aves import gui
 from aves.utils import mkdir_p
 
 
@@ -29,7 +28,11 @@ def parse_arguments():
         raise ValueError(args.template + " is not a valid template (Valid " +
                          "templates are: " + ", ".join(VALID_TEMPLATES) + ")")
     if args.destdir is None:
-        args.destdir = gui.dirname_from_dialog(path=".")
+        # Only needed as a fallback when --destdir is omitted, so this
+        # stays a local import: it's the only thing in this module that
+        # needs Tk installed.
+        from aves import dialogs
+        args.destdir = dialogs.dirname_from_dialog(path=".")
     if not os.path.exists(args.destdir):
         mkdir_p(args.destdir)
     # Uncomment to debug the output of argparse:

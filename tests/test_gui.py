@@ -1,0 +1,69 @@
+import subprocess
+import sys
+
+import matplotlib
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
+import pytest
+
+from aves.gui import SensorViewerGUI
+
+GUI_CONFIG = {
+    "x_column": "t",
+    "zoom_all_together": True,
+    "window_title": "Test",
+    "refresh_time_ms": 100,
+    "axes": {
+        "A": {
+            "row": 0, "col": 0,
+            "columns": ["a"],
+            "options": {"ylabel": "A"},
+        },
+        "B": {
+            "row": 1, "col": 0,
+            "columns": ["b"],
+            "options": {"ylabel": "B"},
+        },
+    },
+}
+
+
+def test_gui_has_no_tk_dependency():
+    """aves.gui must stay importable without Tk: SensorViewerGUI only needs
+    matplotlib. The Tk-only file dialogs live in aves.dialogs instead. Run
+    in a subprocess for a clean interpreter, independent of what other
+    tests may have already imported."""
+    result = subprocess.run(
+        [sys.executable, "-c",
+         "import sys\n"
+         "import aves.gui\n"
+         "assert 'tkinter' not in sys.modules\n"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.fixture
+def gui_window():
+    window = SensorViewerGUI(config=GUI_CONFIG)
+    yield window
+    plt.close(window.fig)
+
+
+def test_gui_creates_one_axis_per_configured_subplot(gui_window):
+    assert set(gui_window.axes.keys()) == {"A", "B"}
+    assert set(gui_window.points.keys()) == {"a", "b"}
+
+
+def test_gui_render_updates_line_data_without_raising(gui_window):
+    data = {"t": [0, 1, 2], "a": [1.0, 2.0, 3.0], "b": [3.0, 2.0, 1.0]}
+    gui_window.render(data)
+    assert list(gui_window.points["a"].get_ydata()) == [1.0, 2.0, 3.0]
+    assert list(gui_window.points["b"].get_ydata()) == [3.0, 2.0, 1.0]
+
+
+def test_gui_closed_reflects_figure_lifecycle(gui_window):
+    assert not gui_window.closed
+    plt.close(gui_window.fig)
+    assert gui_window.closed
