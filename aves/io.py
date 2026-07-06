@@ -149,6 +149,11 @@ class ReadSensorFile(ReadSensorAbstract):
                 continue
             break
         fields = line.split()
+        if len(fields) != len(self._file_columns):
+            raise ValueError(
+                "{}: expected {} fields ({}), got {}: {!r}".format(
+                    self._filename, len(self._file_columns),
+                    ", ".join(self._file_columns), len(fields), line))
 
         data_acq = [fields[0]] + [float(val) for val in fields[1:]]
 

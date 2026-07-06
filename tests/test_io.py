@@ -93,6 +93,15 @@ def test_read_skips_comments_and_blank_lines(tmp_path):
     ]
 
 
+def test_read_reports_field_count_mismatch_clearly(tmp_path):
+    infile = tmp_path / "in.txt"
+    infile.write_text("1\t2.0\n")  # only 2 fields, config expects 3
+    config = {"columns": ["a", "b", "c"]}
+    with ReadSensorFile(filename=str(infile), config=config) as reader:
+        with pytest.raises(ValueError, match=r"expected 3 fields.*got 2"):
+            reader.readsample()
+
+
 def test_readsamples_respects_num_samples_limit(tmp_path):
     infile = tmp_path / "in.txt"
     infile.write_text("1\t2.0\n3\t4.0\n5\t6.0\n")
