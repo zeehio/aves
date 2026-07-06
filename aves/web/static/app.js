@@ -94,6 +94,9 @@ async function main() {
 
     const syncKey = config.zoom_all_together ? "aves" : null;
     const charts = axesConfig.map((axisConfig) => buildChart(axisConfig, syncKey));
+    // Read-only introspection hook (browser console, tests) -- not used by
+    // this module itself.
+    window.__avesCharts = charts;
 
     const xColumn = config.x_column;
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -103,6 +106,7 @@ async function main() {
     ws.addEventListener("close", () => setStatus("disconnected", true));
     ws.addEventListener("error", () => setStatus("connection error", true));
 
+    window.__avesRenderCount = 0;
     ws.addEventListener("message", (event) => {
         const data = JSON.parse(event.data);
         const xValues = data[xColumn] || [];
@@ -110,6 +114,11 @@ async function main() {
             const chartData = [xValues].concat(columns.map((name) => data[name] || []));
             plot.setData(chartData);
         }
+        window.__avesRenderCount++;
+        // Fired once all charts have drawn the new data. Not used by this
+        // module itself -- an observability hook for tests (e.g. measuring
+        // publish-to-render latency) or future features.
+        window.dispatchEvent(new CustomEvent("aves:data-rendered", { detail: { data } }));
     });
 }
 

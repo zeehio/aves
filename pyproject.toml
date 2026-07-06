@@ -24,6 +24,7 @@ classifiers = [
 
 [project.optional-dependencies]
 web = ["fastapi", "uvicorn[standard]"]
+test = ["pytest", "httpx", "playwright"]
 
 [project.urls]
 Homepage = "https://github.com/zeehio/aves"
