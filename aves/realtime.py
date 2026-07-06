@@ -73,12 +73,12 @@ def _build_input_device(args, config):
     if os.path.isfile(args.port):
         require_keys(
             config, ["output"],
-            "config.yaml (its 'output' section describes the columns of "
-            "the recorded file being replayed as input)")
+            f"{args.config_file} (its 'output' section describes the "
+            "columns of the recorded file being replayed as input)")
         return io.ReadSensorFile(filename=args.port, config=config["output"])
     require_keys(
         config, ["input"],
-        "config.yaml (needed to read live from the serial port)")
+        f"{args.config_file} (needed to read live from the serial port)")
     return io.ReadSensorSerial(port=args.port, config=config["input"])
 
 

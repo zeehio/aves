@@ -222,9 +222,10 @@ class ReadSensorSerial(ReadSensorAbstract):
         self._fields = []
         for i, column in enumerate(arduino_config["columns"]):
             require_keys(
-                column, ["name", "conversion_factor"],
+                column, ["name"],
                 f"config.yaml's 'input.arduino.columns[{i}]' entry")
-            self._fields.append((column["name"], column["conversion_factor"]))
+            self._fields.append(
+                (column["name"], column.get("conversion_factor", 1.0)))
         self.port = port
         self._baudrate = arduino_config["baudrate"]
         self._timeout = arduino_config["timeout"]

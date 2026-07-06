@@ -150,16 +150,25 @@ def test_readsensorserial_requires_arduino_keys():
         ReadSensorSerial(port="/dev/fake", config=config)
 
 
-def test_readsensorserial_requires_column_keys():
+def test_readsensorserial_requires_column_name():
     config = {
         "arduino": {
             "baudrate": 9600,
             "timeout": 1,
-            "columns": [{"name": "a"}],  # missing conversion_factor
+            "columns": [{"conversion_factor": 2.0}],  # missing name
         }
     }
-    with pytest.raises(ValueError, match=r"columns\[0\].*conversion_factor"):
+    with pytest.raises(ValueError, match=r"columns\[0\].*name"):
         ReadSensorSerial(port="/dev/fake", config=config)
+
+
+def test_readsensorserial_conversion_factor_defaults_to_one(caplog):
+    reader = _make_serial_reader([{"name": "a"}])  # no conversion_factor
+    reader._inputdata = FakeSerialPort([b"3.0\n"])
+
+    sample = reader.readsample()
+
+    assert sample["a"] == 3.0
 
 
 def test_readsensorserial_skips_garbage_and_logs_warning(caplog):

@@ -65,7 +65,8 @@ For the arduino input, we have multiple parameters:
     Each element is defined by `name` which gives a name to the column and `conversion_factor` that is used to convert the
     number printed by the arduino to a magnitude meaninful for us. For instance, the conversion_factor is used in the example
     to convert the time printed by the arduino from milliseconds to seconds (0.001), and the sensor reads (in the range 0-1023) to Volts
-    (in the range 0-5V): (5V/1023 = 0.004887586). The columns should be given in the order that they are printed by the arduino.
+    (in the range 0-5V): (5V/1023 = 0.004887586). `conversion_factor` is optional and defaults to `1.0` (no conversion) if omitted.
+    The columns should be given in the order that they are printed by the arduino.
 
 The computer clock does not have an entry, as it has no options. However, we should remember that besides the columns defined
 in the `arduino` section, we also have the `time_computer` column, useful to synchronize our experiment with other information.

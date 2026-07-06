@@ -56,7 +56,7 @@ def DataExplorer():
     args = parse_arguments()
     # Parse config (plot layout and description of arduino output)
     config = parse_config(config_file=args.config_file)
-    require_keys(config, ["gui", "output"], "config.yaml")
+    require_keys(config, ["gui", "output"], args.config_file)
     window = gui.SensorViewerGUI(config=config["gui"])
     with io.ReadSensorFile(filename=args.filename, config=config["output"]) as idev:
         samples = idev.readsamples()
