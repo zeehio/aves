@@ -13,7 +13,7 @@ the official Python installers on Windows and macOS; on Debian/Ubuntu install
 it separately with `sudo apt install python3-tk`). Tk is **not** required for:
 
 - Scripted/headless acquisition (see [Running headless](#running-headless-no-display) below).
-- `aves.new_template`/`aves.explorer` as long as `--destdir`/`--filename` are
+- `aves.scaffold`/`aves.explorer` as long as `--destdir`/`--filename` are
   always given explicitly (Tk is only used as a fallback to pop up a file/folder
   picker when those flags are omitted).
 
@@ -24,7 +24,7 @@ it separately with `sudo apt install python3-tk`). Tk is **not** required for:
 
 1. Prepare the arduino code and the config.yaml file for aves:
 
-       python3 -m aves.new_template --destdir new_project_dir
+       python3 -m aves.scaffold --destdir new_project_dir
 
 2. `new_project_dir` will be created, open the `simple_demo.ino` file, compile
    it and upload it to the arduino.
