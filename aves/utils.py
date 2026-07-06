@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import errno
 import os
-import yaml
+import tomllib
 
 
 def mkdir_p(path):
@@ -35,24 +35,25 @@ def require_keys(mapping, keys, name):
     return mapping
 
 
-def parse_config(config_file="config.yaml"):
+def parse_config(config_file="config.toml"):
     if config_file.endswith("json"):
         raise ValueError("Please use aves < 3.0.0")
-    with open(config_file) as stream:
-        try:
-            data = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            raise ValueError(f"Could not parse {config_file} as YAML: {exc}") from exc
-    if not isinstance(data, dict):
+    if config_file.endswith((".yaml", ".yml")):
         raise ValueError(
-            f"{config_file} must contain a YAML mapping with a top-level "
-            "'version' key, 'input', 'gui' and 'output' sections")
+            f"{config_file} looks like a YAML file. Since aves 4.0.0, "
+            "config files use TOML (config.toml) instead. Please convert "
+            "it -- see the README for the new schema.")
+    with open(config_file, "rb") as stream:
+        try:
+            data = tomllib.load(stream)
+        except tomllib.TOMLDecodeError as exc:
+            raise ValueError(f"Could not parse {config_file} as TOML: {exc}") from exc
     if "version" not in data:
         raise ValueError(
             f"{config_file} is missing the required 'version' key "
-            "(expected version: 2)")
-    if data["version"] != 2:
+            "(expected version = 3)")
+    if data["version"] != 3:
         raise ValueError(
             f"{config_file} has version {data['version']!r}, but this "
-            "version of aves only supports config files with version: 2")
+            "version of aves only supports config files with version = 3")
     return data

@@ -1,0 +1,42 @@
+version = 3
+
+[input.arduino]
+baudrate = 9600
+timeout = 3
+
+[[input.arduino.columns]]
+name = "time_arduino"
+conversion_factor = 0.001
+
+[[input.arduino.columns]]
+name = "Sensor 1"
+conversion_factor = 0.004887586
+
+[[input.arduino.columns]]
+name = "Sensor 2"
+conversion_factor = 0.004887586
+
+[gui]
+x_column = "time_arduino"
+zoom_all_together = true
+window_title = "Aves Demo"
+refresh_time_ms = 100
+
+[[gui.axes]]
+name = "Sensor 1"
+row = 0
+col = 0
+columns = ["Sensor 1"]
+ylim = [-0.5, 5.5]
+ylabel = "Sensor 1 (V)"
+
+[[gui.axes]]
+name = "Sensor 2"
+row = 1
+col = 0
+columns = ["Sensor 2"]
+ylim = [-0.5, 5.5]
+ylabel = "Sensor 2 (V)"
+
+[output]
+columns = ["time_computer", "time_arduino", "Sensor 1", "Sensor 2"]
