@@ -26,7 +26,8 @@ import contextlib
 from aves import gui
 from aves import io
 from aves.acquisition import Acquisition
-from aves.utils import parse_config, require_keys
+from aves.utils import parse_config
+from aves.wiring import build_input_device, build_output_device
 
 
 def _parse_arguments():
@@ -71,27 +72,6 @@ def _parse_arguments():
     return args
 
 
-def _build_input_device(args, config):
-    """Reads from the serial port, or replays a previously recorded file."""
-    if os.path.isfile(args.port):
-        require_keys(
-            config, ["output"],
-            f"{args.config_file} (its 'output' section describes the "
-            "columns of the recorded file being replayed as input)")
-        return io.ReadSensorFile(filename=args.port, config=config["output"])
-    require_keys(
-        config, ["input"],
-        f"{args.config_file} (needed to read live from the serial port)")
-    return io.ReadSensorSerial(port=args.port, config=config["input"])
-
-
-def _build_output_device(args, config):
-    """Returns a WriteSensorFile, or None if the config has no output section."""
-    if "output" not in config:
-        return None
-    return io.WriteSensorFile(filename=args.outfile, config=config["output"])
-
-
 class RealTimeAnalysis(object):
     def __init__(self):
         # Parse input arguments, show help...
@@ -101,8 +81,9 @@ class RealTimeAnalysis(object):
         # Buffers with the data to be plotted on each instant are saved here:
         buffers = io.DataBuffers(maxlen=self.args.plot_win_size)
         # Use the Serial port or mock the serial port with a file:
-        idev = _build_input_device(self.args, config)
-        outfile = _build_output_device(self.args, config)
+        idev = build_input_device(
+            self.args.port, config, config_file=self.args.config_file)
+        outfile = build_output_device(self.args.outfile, config)
         # Create the figure, axis and the GUI:
         self.window = gui.SensorViewerGUI(config=config["gui"]) if "gui" in config else None
 
