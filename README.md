@@ -2,11 +2,20 @@
 
 This python module makes it easy to acquire data from a serial port, visualize it
 on real time and record it. It also provides a module for visualizing data previously
-aquired with this tool.
+acquired with this tool.
 
 ## Installation
 
-    pip3 install aves
+    pip install aves
+
+Requires Python 3.8+. The real-time plotting GUI needs Tk (already bundled with
+the official Python installers on Windows and macOS; on Debian/Ubuntu install
+it separately with `sudo apt install python3-tk`). Tk is **not** required for:
+
+- Scripted/headless acquisition (see [Running headless](#running-headless-no-display) below).
+- `aves.new_template`/`aves.explorer` as long as `--destdir`/`--filename` are
+  always given explicitly (Tk is only used as a fallback to pop up a file/folder
+  picker when those flags are omitted).
 
 ## Quick start
 
@@ -20,10 +29,11 @@ aquired with this tool.
 2. `new_project_dir` will be created, open the `simple_demo.ino` file, compile
    it and upload it to the arduino.
 
-3. Run the demo code
+3. Run the demo code, replacing `<port>` with the serial port your arduino is
+   connected to (e.g. `COM3` on Windows, `/dev/ttyUSB0` on Linux):
 
         cd new_project_dir
-        python3 -m aves.realtime --port *Serial port where your arduino is connected* --outfile "test.txt"
+        python3 -m aves.realtime --port <port> --outfile "test.txt"
 
     ![Image of the acquisition demo](aves/templates/simple_demo/demo.png)
 
@@ -33,13 +43,23 @@ aquired with this tool.
 
         python3 -m aves.explorer --filename "test.txt"
 
+## Running headless (no display)
+
+If `config.yaml` has no `gui:` section, `aves.realtime` skips the plotting
+window entirely and just reads, records and buffers data -- no display or Tk
+needed. This is the way to go for unattended/embedded setups (e.g. a
+Raspberry Pi with no monitor attached). Everything else (acquisition,
+`--outfile`, `--time`, replaying a recorded file as `--port`) works exactly
+the same either way.
+
 ## Aves configuration
 
 Aves is configured using a `yaml` file with four sections:
 
 - `version`: Just a value, must be 2.
 - `input`: Defines the aves input sources.
-- `gui`: Controls the real time plotting options
+- `gui`: Controls the real time plotting options. Omit this section entirely
+  to run headless (see above).
 - `output`: Defines the columns with sensor data that will be saved in a text file.
 
 Besides, there are more tunable parameters. See `python3 -m aves.realtime --help`
@@ -63,7 +83,7 @@ For the arduino input, we have multiple parameters:
 - `timeout`: The seconds the python code will wait for data until it believes the serial connection has been dropped.
 - `columns`: Aves must know what is the arduino printing on the serial port. `columns` is a list with as many elements as columns.
     Each element is defined by `name` which gives a name to the column and `conversion_factor` that is used to convert the
-    number printed by the arduino to a magnitude meaninful for us. For instance, the conversion_factor is used in the example
+    number printed by the arduino to a magnitude meaningful for us. For instance, the conversion_factor is used in the example
     to convert the time printed by the arduino from milliseconds to seconds (0.001), and the sensor reads (in the range 0-1023) to Volts
     (in the range 0-5V): (5V/1023 = 0.004887586). `conversion_factor` is optional and defaults to `1.0` (no conversion) if omitted.
     The columns should be given in the order that they are printed by the arduino.
@@ -78,11 +98,11 @@ The `gui` defines the visualization options, including:
 
 - The name of the column used in the `x` axis (`x_column`). It usually is the time given by the Arduino.
 - Whether or not the zoom for all the subplots should be shared. It is often convenient to have it shared (`zoom_all_together`).
-- The `axes`: The subplots available in the window. Imagine the subplots layed out in a grid. The first subplot (top-left) would be
+- The `axes`: The subplots available in the window. Imagine the subplots laid out in a grid. The first subplot (top-left) would be
   in `row: 0`, `col: 0`. The subplot below the first would appear in `row: 1`, `col: 0`, etc. Subplots may span several rows or columns,
   to make them larger, with the `rowspan` and `colspan` options, by default both set to `1`. Each subplot should plot at least one column
   from the input, although more than one column can be plotted. The column names to be plotted for each subplot are given in `columns`.
-  Additional plotting options (limits, labels) can be given in `options`.
+  Additional plotting options (limits, labels) can be given in `options` (optional, defaults to none).
 
 Besides, there is the name of the window `window_title` and the `refresh_time_ms` that controls how often the GUI is refreshed.
 

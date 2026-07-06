@@ -1,39 +1,35 @@
 # -*- coding: utf-8 -*-
 """
-The graphical user interface is defined in :py:class:`SensorViewerGUI`. This
-class creates the figure with the axes and the plots of the GUI.
+The graphical user interface is defined in SensorViewerGUI, which creates
+the figure with the axes and the plots of the GUI.
 
 This class:
 
- - Creates a figure that contains all the plots in
-   :py:class:`SensorViewerGUI._create_figure`.
- - Creates an axes for each plot we want in
-   :py:class:`SensorViewerGUI._create_axes`. Note that the labels are created
-   at :py:class:`SensorViewerGUI._set_axes_properties`.
- - Prepares the plots (initially without any data) that will appear on each
-   axes :py:class:`SensorViewerGUI._create_points`.
+ - Creates a figure that contains all the plots (_create_figure).
+ - Creates an axes for each plot we want (_create_axes). Note that the
+   labels are set separately, in set_axes_properties.
+ - Prepares the plots (initially without any data) that will appear on
+   each axes (_create_points).
 
 Additionally, this class provides an interface so the main program can:
 
- - Draw the latest data :py:class:`SensorViewerGUI.render`. A small delay is
-   introduced so the user can move and resize the window interactively.
- - Drive a loop with :py:class:`SensorViewerGUI.run`, calling back into a
-   caller-supplied function on every refresh until it says to stop or the
-   window is closed.
+ - Draw the latest data (render). A small delay is introduced so the
+   user can move and resize the window interactively.
+ - Drive a loop (run), calling back into a caller-supplied function on
+   every refresh until it says to stop or the window is closed.
 
 It gives further options to:
 
- - Optionally use the same ``time`` axis on all the plots.
- - Report whether the window has been closed by the user
-   (:py:class:`SensorViewerGUI.closed`).
+ - Optionally use the same time axis on all the plots.
+ - Report whether the window has been closed by the user (closed).
  - Keep the window of the program open until it is closed by the user
+   (wait_until_close).
 
 This module intentionally knows nothing about how data is acquired --
-see :py:mod:`aves.acquisition` for that. It also has no dependency on
-Tk: the "open file"/"choose directory" dialogs used by the CLI entry
-points live in :py:mod:`aves.dialogs` instead, so this module can be
-imported and tested (e.g. with matplotlib's Agg backend) without Tk
-installed.
+see aves.acquisition for that. It also has no dependency on Tk: the
+"open file"/"choose directory" dialogs used by the CLI entry points
+live in aves.dialogs instead, so this module can be imported and
+tested (e.g. with matplotlib's Agg backend) without Tk installed.
 
 """
 

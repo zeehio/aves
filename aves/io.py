@@ -1,18 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Overview
-----------
-
 This module deals with reading and writing sensor data from an Arduino.
 It takes care of:
 
- - **Reading data from the serial port** (useful for online data acquisition)
- - **Writing data to a file** (useful for storing the data we read from the
+ - Reading data from the serial port (useful for online data acquisition)
+ - Writing data to a file (useful for storing the data we read from the
    serial port)
- - **Reading data from a file** (useful for offline analysis of data)
+ - Reading data from a file (useful for offline analysis of data)
 
 Reading samples
-------------------
+----------------
 
 Acquiring samples from any device or file requires to:
 
@@ -20,36 +17,26 @@ Acquiring samples from any device or file requires to:
  2. Read sample (or batch of samples)
  3. Close the device or file (when finished)
 
-This idea is expressed in :py:class:`ReadSensorAbstract`. We define the
-*acquisition system* that must define:
+This idea is expressed in ReadSensorAbstract. We define the acquisition
+system that must define:
 
- - An ``open`` and a ``close`` method.
- - A ``readsample`` method and a ``readsamples`` method.
- - A ``stop_sampling`` property (is ``True`` if we have read all samples)
+ - An open and a close method.
+ - A readsample method and a readsamples method.
+ - A stop_sampling property (is True if we have read all samples)
 
 The advantage of having this abstract class stating "what actions have to be
-implemented" is that if in the future we want a ``ReadSensorWifi`` we only
+implemented" is that if in the future we want a ReadSensorWifi we only
 need to implement the open/read/close methods and it will work directly.
 
-
-Reading from serial port
-+++++++++++++++++++++++++
-
-We define :py:class:`ReadSensorSerial`, that implements the methods to read
-from a serial port.
-
-Reading from a file
-++++++++++++++++++++
-
-We define :py:class:`ReadSensorFile`, that implements the methods to read
-from a conventional file.
+ReadSensorSerial implements those methods to read from a serial port.
+ReadSensorFile implements them to read from a conventional file.
 
 Long experiments and memory usage
-------------------------------------
+----------------------------------
 
 To prevent the system from crashing on very long experiments, we will
 store the samples on disk on the fly and we will only keep the last N points
-in memory for plotting. To do that, we will use the :py:class:`DataBuffers`.
+in memory for plotting. To do that, we will use DataBuffers.
 
 This class is also used to control the number of points we want to plot in
 the online analysis (plots with too many points also consume more memory).
@@ -195,8 +182,7 @@ class ReadSensorSerial(ReadSensorAbstract):
     def __init__(self, port, config,
                  max_consecutive_garbage_lines=DEFAULT_MAX_CONSECUTIVE_GARBAGE_LINES):
         """
-        Reads the Arduino and optionally saves a copy of the readed data to a
-        file.
+        Reads samples from the Arduino's serial port.
 
         Args:
             port (str): Serial port to read data from.

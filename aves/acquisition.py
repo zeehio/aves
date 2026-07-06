@@ -2,9 +2,9 @@
 """
 Owns the "read a batch of samples, write them, buffer them, decide whether to
 keep going" loop. This module has no knowledge of how (or whether) the
-results get displayed: it only ever imports :py:mod:`aves.io` and the
-standard library, so it can be imported and tested without matplotlib or
-Tk installed.
+results get displayed: it only ever imports aves.io and the standard
+library, so it can be imported and tested without matplotlib or Tk
+installed.
 """
 
 import datetime
@@ -12,20 +12,19 @@ import datetime
 
 class Acquisition(object):
     """
-    Reads samples from ``idev``, optionally writes them to ``outfile``, and
-    buffers them in ``buffers``. A presentation layer (a GUI, a script, a
-    test) reads ``buffers.data`` after each :py:meth:`step` -- it is never
-    called into from here.
+    Reads samples from idev, optionally writes them to outfile, and
+    buffers them in buffers. A presentation layer (a GUI, a script, a
+    test) reads buffers.data after each step() -- it is never called
+    into from here.
 
     Args:
-        idev: An open :py:class:`aves.io.ReadSensorAbstract` instance.
+        idev: An open aves.io.ReadSensorAbstract instance.
         buffers (aves.io.DataBuffers): Where read samples are accumulated.
-        outfile: An open :py:class:`aves.io.WriteSensorFile` instance, or
-            ``None`` to skip writing samples to disk.
+        outfile: An open aves.io.WriteSensorFile instance, or None to
+            skip writing samples to disk.
         tmeas (float): Stop once this many seconds have elapsed since
             construction (default: unlimited).
-        samples_per_step (int): How many samples :py:meth:`step` reads at
-            a time.
+        samples_per_step (int): How many samples step() reads at a time.
     """
 
     def __init__(self, idev, buffers, outfile=None, tmeas=float('inf'),
