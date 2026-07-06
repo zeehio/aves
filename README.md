@@ -8,7 +8,7 @@ acquired with this tool.
 
     pip install aves
 
-Requires Python 3.10+. The real-time plotting GUI needs Tk (already bundled with
+Requires Python 3.11+. The real-time plotting GUI needs Tk (already bundled with
 the official Python installers on Windows and macOS; on Debian/Ubuntu install
 it separately with `sudo apt install python3-tk`). Tk is **not** required for:
 
