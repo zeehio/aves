@@ -37,8 +37,11 @@ def _parse_arguments():
     fname_new = os.path.join("data", fname_new)
     parser = argparse.ArgumentParser(description="Read Arduino sensors")
     # add expected arguments
-    parser.add_argument('--port', dest='port', default='COM5',
-                        help="serial port to read data from")
+    parser.add_argument('--port', dest='port', required=True,
+                        help="serial port to read data from (e.g. COM3 on "
+                             "Windows, /dev/ttyUSB0 or /dev/ttyACM0 on "
+                             "Linux, /dev/cu.usbmodemXXXX on macOS), or a "
+                             "path to a previously recorded file to replay")
     parser.add_argument('--no-save', dest='save', action="store_false",
                         help="skip saving acquired data to a file")
     parser.add_argument('--time', dest='tmeas', default=float('inf'),
