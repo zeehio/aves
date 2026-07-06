@@ -15,12 +15,18 @@ directly.
 """
 
 import asyncio
+import threading
 
 
 class Broadcaster:
     def __init__(self):
         self._loop = None
         self._clients = set()
+        #: Set once bind_loop() has run. A producer thread started before
+        #: the server's event loop exists (e.g. an acquisition thread
+        #: launched right before uvicorn.run()) should wait on this
+        #: before calling publish(), instead of racing bind_loop().
+        self.ready = threading.Event()
 
     def bind_loop(self, loop=None):
         """
@@ -28,6 +34,7 @@ class Broadcaster:
         startup), so publish() knows which loop to schedule delivery on.
         """
         self._loop = loop if loop is not None else asyncio.get_running_loop()
+        self.ready.set()
 
     async def subscribe(self):
         """

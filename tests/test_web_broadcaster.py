@@ -46,6 +46,15 @@ def test_broadcaster_publish_before_bind_loop_raises():
         broadcaster.publish({"x": 1})
 
 
+def test_broadcaster_ready_is_set_only_after_bind_loop():
+    async def scenario():
+        broadcaster = Broadcaster()
+        assert not broadcaster.ready.is_set()
+        broadcaster.bind_loop()
+        assert broadcaster.ready.is_set()
+    asyncio.run(scenario())
+
+
 def test_broadcaster_publish_is_safe_from_a_different_thread():
     """The realistic scenario this class exists for: publish() is
     called from the thread running the blocking acquisition loop, not
