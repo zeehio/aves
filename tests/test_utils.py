@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from aves.utils import mkdir_p, parse_config
+from aves.utils import mkdir_p, parse_config, require_keys
 
 
 def test_mkdir_p_creates_nested_directory(tmp_path):
@@ -60,3 +60,23 @@ def test_parse_config_rejects_invalid_yaml(tmp_path):
 def test_parse_config_rejects_json_extension():
     with pytest.raises(ValueError):
         parse_config(config_file="config.json")
+
+
+def test_require_keys_passes_through_when_all_present():
+    mapping = {"a": 1, "b": 2}
+    assert require_keys(mapping, ["a", "b"], "some section") is mapping
+
+
+def test_require_keys_reports_missing_keys_by_name():
+    with pytest.raises(ValueError, match=r"missing required key\(s\): b, c"):
+        require_keys({"a": 1}, ["a", "b", "c"], "some section")
+
+
+def test_require_keys_names_the_section_in_the_error():
+    with pytest.raises(ValueError, match="the 'arduino' section"):
+        require_keys({}, ["baudrate"], "the 'arduino' section")
+
+
+def test_require_keys_rejects_non_mapping():
+    with pytest.raises(ValueError, match="must be a mapping"):
+        require_keys(["not", "a", "dict"], ["a"], "some section")

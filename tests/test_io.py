@@ -1,3 +1,5 @@
+import pytest
+
 from aves.io import DataBuffers, ReadSensorFile, ReadSensorSerial, WriteSensorFile
 
 
@@ -113,6 +115,19 @@ def test_readsample_returns_none_at_eof(tmp_path):
     assert second is None
 
 
+def test_read_sensor_file_requires_columns(tmp_path):
+    infile = tmp_path / "in.txt"
+    infile.write_text("1\t2.0\n")
+    with pytest.raises(ValueError, match="'output' section.*columns"):
+        ReadSensorFile(filename=str(infile), config={})
+
+
+def test_write_sensor_file_requires_columns(tmp_path):
+    outfile = tmp_path / "out.txt"
+    with pytest.raises(ValueError, match="'output' section.*columns"):
+        WriteSensorFile(filename=str(outfile), config={})
+
+
 def _make_serial_reader(columns, **kwargs):
     config = {
         "arduino": {
@@ -122,6 +137,38 @@ def _make_serial_reader(columns, **kwargs):
         }
     }
     return ReadSensorSerial(port="/dev/fake", config=config, **kwargs)
+
+
+def test_readsensorserial_requires_arduino_section():
+    with pytest.raises(ValueError, match="'input' section.*arduino"):
+        ReadSensorSerial(port="/dev/fake", config={})
+
+
+def test_readsensorserial_requires_arduino_keys():
+    config = {"arduino": {"columns": []}}
+    with pytest.raises(ValueError, match="'input.arduino' section.*baudrate, timeout"):
+        ReadSensorSerial(port="/dev/fake", config=config)
+
+
+def test_readsensorserial_requires_column_name():
+    config = {
+        "arduino": {
+            "baudrate": 9600,
+            "timeout": 1,
+            "columns": [{"conversion_factor": 2.0}],  # missing name
+        }
+    }
+    with pytest.raises(ValueError, match=r"columns\[0\].*name"):
+        ReadSensorSerial(port="/dev/fake", config=config)
+
+
+def test_readsensorserial_conversion_factor_defaults_to_one(caplog):
+    reader = _make_serial_reader([{"name": "a"}])  # no conversion_factor
+    reader._inputdata = FakeSerialPort([b"3.0\n"])
+
+    sample = reader.readsample()
+
+    assert sample["a"] == 3.0
 
 
 def test_readsensorserial_skips_garbage_and_logs_warning(caplog):
