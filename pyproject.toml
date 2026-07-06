@@ -22,6 +22,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.optional-dependencies]
+web = ["fastapi", "uvicorn[standard]"]
+
 [project.urls]
 Homepage = "https://github.com/zeehio/aves"
 
