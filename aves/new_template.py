@@ -1,4 +1,4 @@
-import importlib.resources as importlib_res
+import importlib.resources
 
 import argparse
 import os
@@ -43,8 +43,8 @@ def parse_arguments():
 if __name__ == '__main__':
     args = parse_arguments()
     pkg = 'aves.templates.' + args.template
-    skeleton_stream = importlib_res.open_text(pkg, 'skeleton.yaml')
-    res_to_copy = yaml.safe_load(skeleton_stream)
+    pkg_files = importlib.resources.files(pkg)
+    res_to_copy = yaml.safe_load((pkg_files / 'skeleton.yaml').read_text())
     print("Copying files from template: " + args.template +
           " to " + args.destdir)
     res_that_already_exist = []
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         print(res_that_already_exist)
         sys.exit(1)
     for res in res_to_copy:
-        with importlib_res.path(pkg, res) as res_path:
+        with importlib.resources.as_file(pkg_files / res) as res_path:
             print(res)
             dst = os.path.join(args.destdir, res)
             if os.path.exists(dst):
