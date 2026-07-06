@@ -124,7 +124,7 @@ class ReadSensorFile(ReadSensorAbstract):
 
     def __init__(self, filename, config):
         super(ReadSensorFile, self).__init__()
-        require_keys(config, ["columns"], "config.yaml's 'output' section")
+        require_keys(config, ["columns"], "config.toml's 'output' section")
         self._filename = filename
         self._file = None
         self._file_columns = config["columns"]
@@ -200,16 +200,16 @@ class ReadSensorSerial(ReadSensorAbstract):
         # Initialize parent class:
         super(ReadSensorSerial, self).__init__()
         arduino_config = require_keys(
-            config, ["arduino"], "config.yaml's 'input' section")["arduino"]
+            config, ["arduino"], "config.toml's 'input' section")["arduino"]
         require_keys(
             arduino_config, ["columns", "baudrate", "timeout"],
-            "config.yaml's 'input.arduino' section")
+            "config.toml's 'input.arduino' section")
         # Fields:
         self._fields = []
         for i, column in enumerate(arduino_config["columns"]):
             require_keys(
                 column, ["name"],
-                f"config.yaml's 'input.arduino.columns[{i}]' entry")
+                f"config.toml's 'input.arduino.columns[{i}]' entry")
             self._fields.append(
                 (column["name"], column.get("conversion_factor", 1.0)))
         self.port = port
@@ -291,7 +291,7 @@ class WriteSensorFile(object):
         """
             filename (str): File name to dump the data to.
         """
-        require_keys(config, ["columns"], "config.yaml's 'output' section")
+        require_keys(config, ["columns"], "config.toml's 'output' section")
         self.filename = filename
         self._file_columns = config["columns"]
         self._filepointer = None

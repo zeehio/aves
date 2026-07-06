@@ -4,7 +4,7 @@ import argparse
 import os
 from shutil import copyfile
 import sys
-import yaml
+import tomllib
 from aves.utils import mkdir_p
 
 
@@ -49,7 +49,7 @@ def scaffold_project(destdir):
     if not os.path.exists(destdir):
         mkdir_p(destdir)
     pkg_files = importlib.resources.files(_TEMPLATE_PACKAGE)
-    res_to_copy = yaml.safe_load((pkg_files / 'skeleton.yaml').read_text())
+    res_to_copy = tomllib.loads((pkg_files / 'skeleton.toml').read_text())["files"]
     conflicts = [
         os.path.join(destdir, res) for res in res_to_copy
         if os.path.exists(os.path.join(destdir, res))
