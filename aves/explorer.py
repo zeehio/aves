@@ -12,7 +12,6 @@ It does two things:
      * It sets up the Graphical User Interface (GUI)
      * It opens the input file
      * Reads all samples
-     * Optionally applies a median filter
      * Generates a plot with all the data
      * Waits until the user closes the window.
 """

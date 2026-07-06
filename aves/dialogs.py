@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Tk "open file"/"choose directory" dialogs used by the CLI entry points
-when no --filename/--destdir is given. Kept separate from
-:py:mod:`aves.gui` so that module (matplotlib-only) can be imported and
-tested without Tk installed.
+when no --filename/--destdir is given. Kept separate from aves.gui so
+that module (matplotlib-only) can be imported and tested without Tk
+installed.
 """
 
 import tkinter
