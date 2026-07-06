@@ -14,13 +14,20 @@ create_app(gui_config) returns a FastAPI app exposing:
    thread running aves.acquisition.Acquisition, in the intended use)
    calls app.state.broadcaster.publish(data) after each step -- this
    module has no opinion on what that data source is.
+ - /: the frontend (static/index.html + static/app.js), served as-is,
+   no build step. Reads /api/config to lay out one chart per configured
+   axis, then appends data as it arrives over /ws/data.
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
 
 from aves.web.broadcaster import Broadcaster
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 def create_app(gui_config):
@@ -50,5 +57,9 @@ def create_app(gui_config):
             pass
         finally:
             broadcaster.unsubscribe(queue)
+
+    # Mounted last: /api/config and /ws/data above are matched first since
+    # routes are tried in registration order, so this catch-all can't shadow them.
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
     return app

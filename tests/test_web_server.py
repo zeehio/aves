@@ -38,3 +38,25 @@ def test_ws_data_fans_out_to_multiple_connected_clients():
             app.state.broadcaster.publish({"value": 42})
             assert ws1.receive_json() == {"value": 42}
             assert ws2.receive_json() == {"value": 42}
+
+
+def test_root_serves_the_frontend_index_page():
+    app = create_app({"x_column": "t", "axes": []})
+
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "app.js" in response.text
+
+
+def test_static_assets_are_served_including_vendored_uplot():
+    app = create_app({"x_column": "t", "axes": []})
+
+    with TestClient(app) as client:
+        app_js = client.get("/app.js")
+        uplot_js = client.get("/vendor/uplot/uPlot.iife.min.js")
+
+    assert app_js.status_code == 200
+    assert uplot_js.status_code == 200
