@@ -5,7 +5,7 @@ from aves.scaffold import scaffold_project
 
 def test_scaffold_project_copies_template_files(tmp_path):
     destdir = tmp_path / "new_project"
-    copied = scaffold_project(destdir=str(destdir), template="simple_demo")
+    copied = scaffold_project(destdir=str(destdir))
 
     assert set(copied) == {"simple_demo.ino", "config.yaml"}
     for name in copied:
@@ -14,13 +14,8 @@ def test_scaffold_project_copies_template_files(tmp_path):
 
 def test_scaffold_project_creates_destdir(tmp_path):
     destdir = tmp_path / "does" / "not" / "exist" / "yet"
-    scaffold_project(destdir=str(destdir), template="simple_demo")
+    scaffold_project(destdir=str(destdir))
     assert destdir.is_dir()
-
-
-def test_scaffold_project_rejects_unknown_template(tmp_path):
-    with pytest.raises(ValueError, match="not a valid template"):
-        scaffold_project(destdir=str(tmp_path), template="does-not-exist")
 
 
 def test_scaffold_project_refuses_to_overwrite_existing_files(tmp_path):
@@ -29,7 +24,7 @@ def test_scaffold_project_refuses_to_overwrite_existing_files(tmp_path):
     (destdir / "config.yaml").write_text("pretend this is my own file\n")
 
     with pytest.raises(FileExistsError, match="config.yaml"):
-        scaffold_project(destdir=str(destdir), template="simple_demo")
+        scaffold_project(destdir=str(destdir))
 
     # Nothing should have been copied: the pre-existing file untouched,
     # and the other template file not copied either (all-or-nothing).
