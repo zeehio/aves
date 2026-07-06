@@ -18,6 +18,7 @@ import os
 import socket
 import threading
 import time
+import urllib.error
 import urllib.request
 
 import pytest
@@ -70,7 +71,11 @@ class LiveServer:
         deadline = time.time() + 5
         while time.time() < deadline:
             try:
+                # Any HTTP response (even a 401, e.g. when a token is
+                # configured) means the server is up and routing requests.
                 urllib.request.urlopen(f"{self.url}/api/config", timeout=0.2)
+                return self
+            except urllib.error.HTTPError:
                 return self
             except Exception:
                 time.sleep(0.05)
@@ -225,7 +230,7 @@ def test_browser_memory_stays_bounded_under_sustained_streaming(page):
         f"looks like the frontend is retaining data instead of replacing it")
 
 
-def _make_settings_app(tmp_path, window_title="Before"):
+def _make_settings_app(tmp_path, window_title="Before", token=None):
     """Builds a real app wired for /api/settings/restart the same way
     aves.web.__main__.main() does, backed by a real config file and a
     real (tiny) file replay, so restart genuinely stops and rebuilds an
@@ -249,7 +254,7 @@ def _make_settings_app(tmp_path, window_title="Before"):
     infile.write_text("0\n1\n2\n")
 
     initial_config = parse_config(config_file=str(config_file))
-    app = create_app(initial_config["gui"], config_path=str(config_file))
+    app = create_app(initial_config["gui"], config_path=str(config_file), token=token)
     args = types.SimpleNamespace(
         port=str(infile), config_file=str(config_file), outfile=None,
         plot_win_size=200, tmeas=float("inf"), plot_every_n_samples=1)
@@ -332,3 +337,62 @@ def test_settings_page_reports_invalid_toml_without_saving(page, tmp_path):
 
     assert "Could not save" in status_text
     assert config_file.read_text() == original_text
+
+
+TOKEN = "e2e-test-token"
+
+
+def test_token_blocks_access_without_it_and_a_valid_link_gets_you_in(page):
+    with LiveServer(create_app(GUI_CONFIG, token=TOKEN)) as server:
+        rejected = page.goto(server.url)
+        assert rejected.status == 401
+
+        page.goto(f"{server.url}/?token={TOKEN}")
+        page.wait_for_function(
+            "document.getElementById('status').textContent === 'connected'",
+            timeout=5000)
+
+        cookies = page.context.cookies()
+        assert any(c["name"] == "aves_token" and c["value"] == TOKEN for c in cookies)
+
+
+def test_token_cookie_carries_over_to_a_plain_link_navigation(page):
+    """Clicking the Settings link (a plain <a href>, no token in the URL)
+    must still work after the initial token-authenticated visit. GUI_CONFIG
+    has no config_path, so /api/settings 404s ("no config file") rather
+    than loading -- what this checks is that it isn't a 401 (i.e. the
+    cookie, not the missing config, is why there's nothing to show)."""
+    with LiveServer(create_app(GUI_CONFIG, token=TOKEN)) as server:
+        page.goto(f"{server.url}/?token={TOKEN}")
+        page.wait_for_function(
+            "document.getElementById('status').textContent === 'connected'",
+            timeout=5000)
+
+        page.click("text=Settings")
+        page.wait_for_url(f"{server.url}/settings.html", timeout=5000)
+        page.wait_for_function(
+            "document.getElementById('status').textContent !== 'loading…'",
+            timeout=5000)
+        status_text = page.text_content("#status")
+
+    assert "missing or invalid token" not in status_text
+
+
+def test_settings_save_and_restart_work_with_a_token_configured(page, tmp_path):
+    app, config_file = _make_settings_app(tmp_path, window_title="Before", token=TOKEN)
+
+    with LiveServer(app) as server:
+        page.goto(f"{server.url}/settings.html?token={TOKEN}")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+
+        text = page.input_value("#config-text")
+        new_text = text.replace('window_title = "Before"', 'window_title = "After"')
+        page.fill("#config-text", new_text)
+        page.click("#restart-btn")
+
+        page.wait_for_url(f"{server.url}/", timeout=5000)
+        page.wait_for_function("document.title === 'After'", timeout=5000)
+
+    assert 'window_title = "After"' in config_file.read_text()

@@ -14,6 +14,13 @@ function setStatus(text, isError) {
     statusEl.classList.toggle("error", Boolean(isError));
 }
 
+// The page was served with this embedded (see aves/web/server.py), after
+// proving possession of the token via ?token=... in the URL. Sent back
+// explicitly on every API call below.
+function authHeaders() {
+    return window.__AVES_TOKEN__ ? { "Authorization": "Bearer " + window.__AVES_TOKEN__ } : {};
+}
+
 async function errorDetail(response) {
     try {
         const body = await response.json();
@@ -25,7 +32,7 @@ async function errorDetail(response) {
 
 async function refreshFromServer() {
     setStatus("Loading…");
-    const response = await fetch("/api/settings");
+    const response = await fetch("/api/settings", { headers: authHeaders() });
     if (!response.ok) {
         setStatus("Could not load settings: " + await errorDetail(response), true);
         return;
@@ -40,7 +47,7 @@ async function refreshFromServer() {
 async function save() {
     const response = await fetch("/api/settings", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ text: textEl.value }),
     });
     if (!response.ok) {
@@ -63,7 +70,7 @@ document.getElementById("load-other-btn").addEventListener("click", async () => 
     setStatus("Loading " + path + "…");
     const response = await fetch("/api/settings/load", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ path }),
     });
     if (!response.ok) {
@@ -81,7 +88,9 @@ document.getElementById("restart-btn").addEventListener("click", async () => {
         return;
     }
     setStatus("Saved. Restarting acquisition…");
-    const response = await fetch("/api/settings/restart", { method: "POST" });
+    const response = await fetch("/api/settings/restart", {
+        method: "POST", headers: authHeaders(),
+    });
     if (!response.ok) {
         setStatus("Restart failed: " + await errorDetail(response), true);
         return;

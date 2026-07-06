@@ -11,13 +11,17 @@ aves.gui.SensorViewerGUI.render() already uses.
     python3 -m aves.web --port ... [--host 127.0.0.1] [--web-port 8000]
 
 The server binds to 127.0.0.1 by default: this is meant to be viewed
-from a browser on the same machine, not exposed on a network.
+from a browser on the same machine, not exposed on a network. It also
+requires a random token by default (printed at startup as part of the
+URL to open) -- see aves.web.server's module docstring for what that
+does and doesn't protect against.
 """
 
 import argparse
 import contextlib
 import datetime
 import os
+import secrets
 import threading
 
 import uvicorn
@@ -68,6 +72,13 @@ def _parse_arguments():
                              "(default: 127.0.0.1, this machine only)")
     parser.add_argument('--web-port', dest='web_port', type=int, default=8000,
                         help="TCP port for the local web server (default: 8000)")
+    parser.add_argument('--token', dest='token', default=None,
+                        help="require this token to access the web UI "
+                             "(as ?token=... on first visit, then "
+                             "Authorization: Bearer ... on API calls); "
+                             "default: a fresh random token printed at "
+                             "startup. Pass --token='' to disable -- only "
+                             "for trusted, fully local use")
 
     args = parser.parse_args()
     if not args.save:
@@ -190,11 +201,24 @@ def main():
     config = parse_config(config_file=args.config_file)
     require_keys(config, ["gui"], f"{args.config_file} (needed to run aves.web)")
 
-    app = create_app(config["gui"], config_path=args.config_file)
+    # Not passed at all -> a fresh random token; passed as '' -> disabled
+    # (only meant for trusted, fully local use); passed as anything else
+    # -> that fixed value (e.g. for scripting/reconnecting).
+    token = secrets.token_urlsafe(32) if args.token is None else (args.token or None)
+
+    app = create_app(config["gui"], config_path=args.config_file, token=token)
     manager = AcquisitionManager(app, args)
     app.state.restart_callback = manager.restart
 
     manager.start(config)
+    url = f"http://{args.host}:{args.web_port}/"
+    if token:
+        print(f"Open {url}?token={token} to view the acquisition.")
+    else:
+        print(
+            f"Open {url} to view the acquisition. Running with --token='': "
+            "anyone who can reach this port can view data and read/write "
+            "local files through it.")
     try:
         uvicorn.run(app, host=args.host, port=args.web_port)
     finally:

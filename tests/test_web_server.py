@@ -206,3 +206,164 @@ def test_restart_reports_callback_errors_without_crashing(tmp_path):
 
     assert response.status_code == 400
     assert "serial port is on fire" in response.json()["detail"]
+
+
+TOKEN = "s3cr3t-token"
+
+
+def test_no_token_configured_leaves_everything_open():
+    app = create_app({"x_column": "t", "axes": []})
+
+    with TestClient(app) as client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+
+
+def test_index_rejects_missing_or_wrong_token():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        no_token = client.get("/")
+        wrong_token = client.get("/", params={"token": "nope"})
+
+    assert no_token.status_code == 401
+    assert wrong_token.status_code == 401
+
+
+def test_index_html_path_also_requires_the_token():
+    """A direct request for /index.html (not just "/") must not fall
+    through to the unauthenticated static file mount -- that file
+    genuinely exists in STATIC_DIR."""
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        response = client.get("/index.html")
+
+    assert response.status_code == 401
+
+
+def test_settings_html_path_also_requires_the_token():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        response = client.get("/settings.html")
+
+    assert response.status_code == 401
+
+
+def test_index_with_correct_query_token_serves_page_embeds_it_and_sets_cookie():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        response = client.get("/", params={"token": TOKEN})
+
+    assert response.status_code == 200
+    assert f'"{TOKEN}"' in response.text
+    assert "aves_token" in response.cookies
+    assert response.cookies["aves_token"] == TOKEN
+
+
+def test_index_with_valid_cookie_serves_page_without_query_token():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        client.get("/", params={"token": TOKEN})  # sets the cookie
+        response = client.get("/")  # no ?token= this time
+
+    assert response.status_code == 200
+
+
+def test_api_config_rejects_missing_token():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        response = client.get("/api/config")
+
+    assert response.status_code == 401
+
+
+def test_api_config_accepts_authorization_header():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/config", headers={"Authorization": f"Bearer {TOKEN}"})
+
+    assert response.status_code == 200
+
+
+def test_api_config_rejects_wrong_authorization_header():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/config", headers={"Authorization": "Bearer wrong"})
+
+    assert response.status_code == 401
+
+
+def test_api_config_accepts_the_session_cookie():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        client.get("/", params={"token": TOKEN})  # sets the cookie
+        response = client.get("/api/config")
+
+    assert response.status_code == 200
+
+
+def test_api_settings_requires_token(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(VALID_CONFIG_TEXT)
+    app = create_app({"x_column": "t", "axes": []}, config_path=str(config_file), token=TOKEN)
+
+    with TestClient(app) as client:
+        no_auth = client.get("/api/settings")
+        with_auth = client.get(
+            "/api/settings", headers={"Authorization": f"Bearer {TOKEN}"})
+
+    assert no_auth.status_code == 401
+    assert with_auth.status_code == 200
+
+
+def test_static_assets_do_not_require_a_token():
+    """app.js/settings.js/style.css/vendor/* are just code, nothing
+    sensitive -- only the two rendered HTML pages and the API are gated."""
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        app_js = client.get("/app.js")
+
+    assert app_js.status_code == 200
+
+
+def test_websocket_rejects_connection_without_token():
+    import pytest
+    from starlette.websockets import WebSocketDisconnect
+
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        with pytest.raises(WebSocketDisconnect):
+            with client.websocket_connect("/ws/data"):
+                pass
+
+
+def test_websocket_accepts_connection_with_query_token():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        with client.websocket_connect(f"/ws/data?token={TOKEN}") as ws:
+            app.state.broadcaster.publish({"value": 1})
+            assert ws.receive_json() == {"value": 1}
+
+
+def test_websocket_accepts_connection_with_session_cookie():
+    app = create_app({"x_column": "t", "axes": []}, token=TOKEN)
+
+    with TestClient(app) as client:
+        client.get("/", params={"token": TOKEN})  # sets the cookie
+        with client.websocket_connect("/ws/data") as ws:
+            app.state.broadcaster.publish({"value": 2})
+            assert ws.receive_json() == {"value": 2}

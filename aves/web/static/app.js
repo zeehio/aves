@@ -14,6 +14,15 @@ function setStatus(text, isError) {
     statusEl.classList.toggle("error", Boolean(isError));
 }
 
+// The page was served with this embedded (see aves/web/server.py), after
+// proving possession of the token via ?token=... in the URL. Sent back
+// explicitly on every API call; the WebSocket handshake below relies on
+// the session cookie instead, since browsers don't let JS set custom
+// headers on it.
+function authHeaders() {
+    return window.__AVES_TOKEN__ ? { "Authorization": "Bearer " + window.__AVES_TOKEN__ } : {};
+}
+
 function getPlotShape(axesConfig) {
     let rows = 0;
     let cols = 0;
@@ -76,7 +85,7 @@ function buildChart(axisConfig, syncKey) {
 async function main() {
     let config;
     try {
-        const response = await fetch("/api/config");
+        const response = await fetch("/api/config", { headers: authHeaders() });
         config = await response.json();
     } catch (err) {
         setStatus("Could not load /api/config: " + err, true);
