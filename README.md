@@ -22,7 +22,7 @@ it separately with `sudo apt install python3-tk`). Tk is **not** required for:
 - We will use an Arduino to send data through the serial port.
 - We will use *aves* to acquire, represent and record the data.
 
-1. Prepare the arduino code and the config.yaml file for aves:
+1. Prepare the arduino code and the config.toml file for aves:
 
        python3 -m aves.scaffold --destdir new_project_dir
 
@@ -45,7 +45,7 @@ it separately with `sudo apt install python3-tk`). Tk is **not** required for:
 
 ## Running headless (no display)
 
-If `config.yaml` has no `gui:` section, `aves.realtime` skips the plotting
+If `config.toml` has no `[gui]` section, `aves.realtime` skips the plotting
 window entirely and just reads, records and buffers data -- no display or Tk
 needed. This is the way to go for unattended/embedded setups (e.g. a
 Raspberry Pi with no monitor attached). Everything else (acquisition,
@@ -54,13 +54,41 @@ the same either way.
 
 ## Aves configuration
 
-Aves is configured using a `yaml` file with four sections:
+Aves is configured using a `toml` file with four sections:
 
-- `version`: Just a value, must be 2.
+- `version`: Just a value, must be 3.
 - `input`: Defines the aves input sources.
 - `gui`: Controls the real time plotting options. Omit this section entirely
   to run headless (see above).
 - `output`: Defines the columns with sensor data that will be saved in a text file.
+
+A minimal example (see `aves/templates/simple_demo/config.toml` for the full
+template):
+
+```toml
+version = 3
+
+[input.arduino]
+baudrate = 9600
+timeout = 3
+
+[[input.arduino.columns]]
+name = "time_arduino"
+conversion_factor = 0.001
+
+[gui]
+x_column = "time_arduino"
+zoom_all_together = true
+
+[[gui.axes]]
+name = "Sensor 1"
+row = 0
+columns = ["Sensor 1"]
+ylabel = "Sensor 1 (V)"
+
+[output]
+columns = ["time_computer", "time_arduino", "Sensor 1"]
+```
 
 Besides, there are more tunable parameters. See `python3 -m aves.realtime --help`
 for all other command line options, for instance:
@@ -71,7 +99,7 @@ for all other command line options, for instance:
 - `--port COM3` Use the `COM3` serial port
 - `--plot_every_n_samples 10` Wait for at least 10 samples to refresh the GUI
 - `--plot_win_size 200` Keep up to 200 samples in the plot (use 0 for unlimited)
-- `--config another.yaml` Use `another.yaml` as config file.
+- `--config another.toml` Use `another.toml` as config file.
 
 ### The `input` section
 
@@ -98,11 +126,17 @@ The `gui` defines the visualization options, including:
 
 - The name of the column used in the `x` axis (`x_column`). It usually is the time given by the Arduino.
 - Whether or not the zoom for all the subplots should be shared. It is often convenient to have it shared (`zoom_all_together`).
-- The `axes`: The subplots available in the window. Imagine the subplots laid out in a grid. The first subplot (top-left) would be
-  in `row: 0`, `col: 0`. The subplot below the first would appear in `row: 1`, `col: 0`, etc. Subplots may span several rows or columns,
-  to make them larger, with the `rowspan` and `colspan` options, by default both set to `1`. Each subplot should plot at least one column
-  from the input, although more than one column can be plotted. The column names to be plotted for each subplot are given in `columns`.
-  Additional plotting options (limits, labels) can be given in `options` (optional, defaults to none).
+- The `axes`: the subplots available in the window, given as an array of tables (`[[gui.axes]]` -- one entry per subplot). Imagine
+  the subplots laid out in a grid. The first subplot (top-left) would be in `row = 0`, `col = 0`. The subplot below the first
+  would appear in `row = 1`, `col = 0`, etc. Subplots may span several rows or columns, to make them larger, with the `rowspan`
+  and `colspan` options, by default both set to `1`. Each subplot should plot at least one column from the input, although more
+  than one column can be plotted. The column names to be plotted for each subplot are given in `columns`, and `name` gives the
+  subplot a human-readable label.
+
+  Each axis also accepts a small set of display options: `xlim`, `ylim` (axis limits, as `[min, max]`), `xlabel`, `ylabel`, `title`.
+  These are deliberately a fixed, small vocabulary rather than arbitrary plotting-library options: aves may grow other renderers
+  besides its current matplotlib-based GUI (a web-based viewer, for instance), and any option here needs to mean the same thing
+  regardless of what eventually draws it.
 
 Besides, there is the name of the window `window_title` and the `refresh_time_ms` that controls how often the GUI is refreshed.
 

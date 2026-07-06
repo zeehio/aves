@@ -31,7 +31,7 @@ def parse_arguments():
     # add expected arguments
     parser.add_argument("--filename", dest='filename', default=None,
                         help="file name to load")
-    parser.add_argument('--config', dest='config_file', default='config.yaml',
+    parser.add_argument('--config', dest='config_file', default='config.toml',
                         help="Arduino columns, GUI layout and file format")
     # parse args
     args = parser.parse_args()

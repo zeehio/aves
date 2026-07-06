@@ -43,14 +43,28 @@ from aves.utils import require_keys
 def _get_plot_shape(config_axes):
     plot_rows = 0
     plot_cols = 0
-    for k, v in config_axes.items():
-        r = v.get("row", 0) + v.get("rowspan", 1)
-        c = v.get("col", 0) + v.get("colspan", 1)
+    for axis_vals in config_axes:
+        r = axis_vals.get("row", 0) + axis_vals.get("rowspan", 1)
+        c = axis_vals.get("col", 0) + axis_vals.get("colspan", 1)
         if r > plot_rows:
             plot_rows = r
         if c > plot_cols:
             plot_cols = c
     return (plot_rows, plot_cols)
+
+
+#: Keys aves interprets itself when laying out a subplot -- everything
+#: else in a gui.axes[] entry must be one of _STYLE_AXIS_KEYS below.
+_STRUCTURAL_AXIS_KEYS = {
+    "name", "row", "col", "rowspan", "colspan", "columns", "columns_legend",
+}
+
+#: A small, renderer-neutral vocabulary for per-axis styling. Deliberately
+#: NOT a blind passthrough to matplotlib's Axes.set(**kwargs): a future
+#: non-matplotlib view (e.g. a web UI, see issue #9) would have no way to
+#: honor arbitrary matplotlib property names, so the config only exposes
+#: concepts virtually any 2D chart renderer has some equivalent of.
+_STYLE_AXIS_KEYS = {"xlim", "ylim", "xlabel", "ylabel", "title"}
 
 
 class SensorViewerGUI(object):
@@ -61,7 +75,11 @@ class SensorViewerGUI(object):
     def __init__(self, config):
         require_keys(
             config, ["zoom_all_together", "axes", "x_column"],
-            "config.yaml's 'gui' section")
+            "config.toml's 'gui' section")
+        if not isinstance(config["axes"], list):
+            raise ValueError(
+                "config.toml's 'gui.axes' must be an array of tables "
+                "(use [[gui.axes]] entries)")
         # Make sure sharex is boolean
         self._config = config
         self.fig = None
@@ -88,7 +106,7 @@ class SensorViewerGUI(object):
             if self.closed or not tick():
                 self.ani.event_source.stop()
                 return []
-            return list(self.axes.values())
+            return self.axes
         interval = self._config.get("refresh_time_ms", 100)
         self.ani = animation.FuncAnimation(self.fig, _animate,
                                            frames=None, interval=interval, repeat=False)
@@ -126,19 +144,20 @@ class SensorViewerGUI(object):
     def _create_axes(self):
         """ Creates the axis object """
         config_axes = self._config["axes"]
-        axes = dict()
+        axes = []
 
         # The first row is for the temperature and humidity plots
         self._plotshape = _get_plot_shape(config_axes)
         self._sharexaxis = None
-        for axis_name, axis_vals in config_axes.items():
+        for axis_vals in config_axes:
             row_col = (axis_vals.get("row", 0), axis_vals.get("col", 0))
             rowspan = axis_vals.get("rowspan", 1)
             colspan = axis_vals.get("colspan", 1)
-            axes[axis_name] = plt.subplot2grid(self._plotshape,
-                                               row_col, rowspan=rowspan, colspan=colspan, sharex=self._sharexaxis)
+            ax = plt.subplot2grid(self._plotshape,
+                                  row_col, rowspan=rowspan, colspan=colspan, sharex=self._sharexaxis)
+            axes.append(ax)
             if self._sharex and self._sharexaxis is None:
-                self._sharexaxis = axes[axis_name]
+                self._sharexaxis = ax
         self.axes = axes
         self.set_axes_properties()
         return
@@ -147,14 +166,14 @@ class SensorViewerGUI(object):
         """ Create matplotlib lines objects, where the data is stored """
         points = dict()
         config_axes = self._config["axes"]
-        for axis_name, axis_vals in config_axes.items():
+        for i, axis_vals in enumerate(config_axes):
             point_ids = axis_vals.get("columns", [])
             point_legend = axis_vals.get("columns_legend", point_ids)
             for points_id in point_ids:
-                points[points_id] = self.axes[axis_name].plot([], [])[0]
+                points[points_id] = self.axes[i].plot([], [])[0]
             if len(point_ids) > 1:
-                self.axes[axis_name].legend([points[x] for x in point_ids],
-                                            point_legend)
+                self.axes[i].legend([points[x] for x in point_ids],
+                                    point_legend)
         # Update points data with data from self.points:
         if self.points is None:
             self.points = points
@@ -168,11 +187,28 @@ class SensorViewerGUI(object):
 
     def set_axes_properties(self):
         """
-        Sets defaults limits and labels for the plot axes
+        Sets limits, labels and title for the plot axes, using the
+        curated set of style fields in _STYLE_AXIS_KEYS.
         """
         config_axes = self._config["axes"]
-        for (axis_name, ax_opt) in config_axes.items():
-            self.axes[axis_name].set(**ax_opt.get("options", {}))
+        for i, axis_vals in enumerate(config_axes):
+            unknown = set(axis_vals) - _STRUCTURAL_AXIS_KEYS - _STYLE_AXIS_KEYS
+            if unknown:
+                raise ValueError(
+                    "config.toml's 'gui.axes[{}]' has unknown key(s): {}. "
+                    "Valid keys are: {}".format(
+                        i, ", ".join(sorted(unknown)),
+                        ", ".join(sorted(_STRUCTURAL_AXIS_KEYS | _STYLE_AXIS_KEYS))))
+            if "xlim" in axis_vals:
+                self.axes[i].set_xlim(axis_vals["xlim"])
+            if "ylim" in axis_vals:
+                self.axes[i].set_ylim(axis_vals["ylim"])
+            if "xlabel" in axis_vals:
+                self.axes[i].set_xlabel(axis_vals["xlabel"])
+            if "ylabel" in axis_vals:
+                self.axes[i].set_ylabel(axis_vals["ylabel"])
+            if "title" in axis_vals:
+                self.axes[i].set_title(axis_vals["title"])
         return
 
     def set_xlim(self, xlimits=None):
@@ -181,7 +217,7 @@ class SensorViewerGUI(object):
             if self._xlimits is None:
                 return
             xlimits = self._xlimits
-        for axname, axis in self.axes.items():
+        for axis in self.axes:
             axis.set_xlim(xlimits)
         return
 

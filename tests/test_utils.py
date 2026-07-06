@@ -23,43 +23,43 @@ def test_mkdir_p_empty_path_is_noop():
 
 
 def test_parse_config_valid(tmp_path):
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("version: 2\nfoo: bar\n")
+    config_file = tmp_path / "config.toml"
+    config_file.write_text('version = 3\nfoo = "bar"\n')
     data = parse_config(config_file=str(config_file))
-    assert data == {"version": 2, "foo": "bar"}
+    assert data == {"version": 3, "foo": "bar"}
 
 
 def test_parse_config_rejects_wrong_version(tmp_path):
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("version: 1\n")
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("version = 2\n")
     with pytest.raises(ValueError, match="version"):
         parse_config(config_file=str(config_file))
 
 
 def test_parse_config_rejects_missing_version(tmp_path):
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("foo: bar\n")
+    config_file = tmp_path / "config.toml"
+    config_file.write_text('foo = "bar"\n')
     with pytest.raises(ValueError, match="version"):
         parse_config(config_file=str(config_file))
 
 
-def test_parse_config_rejects_non_mapping_yaml(tmp_path):
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("- just\n- a\n- list\n")
-    with pytest.raises(ValueError, match="mapping"):
-        parse_config(config_file=str(config_file))
-
-
-def test_parse_config_rejects_invalid_yaml(tmp_path):
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text("version: 2\n  bad indent: [1, 2\n")
-    with pytest.raises(ValueError, match="YAML"):
+def test_parse_config_rejects_invalid_toml(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("version = 3\n  bad [[[ \n")
+    with pytest.raises(ValueError, match="TOML"):
         parse_config(config_file=str(config_file))
 
 
 def test_parse_config_rejects_json_extension():
     with pytest.raises(ValueError):
         parse_config(config_file="config.json")
+
+
+def test_parse_config_rejects_yaml_extension(tmp_path):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("version: 3\n")
+    with pytest.raises(ValueError, match="TOML"):
+        parse_config(config_file=str(config_file))
 
 
 def test_require_keys_passes_through_when_all_present():
