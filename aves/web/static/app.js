@@ -109,6 +109,13 @@ async function main() {
     window.__avesRenderCount = 0;
     ws.addEventListener("message", (event) => {
         const data = JSON.parse(event.data);
+        if (data.__aves_config_changed__) {
+            // The config was edited and the acquisition restarted (see
+            // settings.html) -- axes/columns may have changed shape, so
+            // reload rather than try to patch the existing charts.
+            window.location.reload();
+            return;
+        }
         const xValues = data[xColumn] || [];
         for (const { plot, columns } of charts) {
             const chartData = [xValues].concat(columns.map((name) => data[name] || []));

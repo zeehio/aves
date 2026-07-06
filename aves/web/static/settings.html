@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>aves settings</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<p class="nav"><a href="/">&larr; back to charts</a></p>
+<h1>Config file</h1>
+<p>Editing: <code id="config-path"></code></p>
+<div id="status">loading…</div>
+<textarea id="config-text" rows="24" spellcheck="false"></textarea>
+<div class="settings-actions">
+    <button id="reload-btn" type="button">Reload from disk</button>
+    <button id="save-btn" type="button">Save</button>
+    <button id="restart-btn" type="button">Save &amp; restart acquisition</button>
+</div>
+<h2>Load a different file</h2>
+<p>
+    <input id="load-path" type="text" placeholder="/path/to/other-config.toml">
+    <button id="load-other-btn" type="button">Load</button>
+</p>
+<script src="/settings.js"></script>
+</body>
+</html>

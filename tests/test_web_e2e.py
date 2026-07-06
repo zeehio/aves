@@ -49,12 +49,13 @@ def _free_port():
 
 
 class LiveServer:
-    """Runs a real aves.web app with uvicorn on a real port, in a
+    """Runs a real aves.web app (built by the caller, via create_app or
+    aves.web.__main__.main's own setup) with uvicorn on a real port, in a
     background thread, so an actual browser can connect to it."""
 
-    def __init__(self, gui_config):
+    def __init__(self, app):
         self.port = _free_port()
-        self.app = create_app(gui_config)
+        self.app = app
         config = uvicorn.Config(
             self.app, host="127.0.0.1", port=self.port, log_level="warning")
         self.server = uvicorn.Server(config)
@@ -110,7 +111,7 @@ def test_latency_from_sample_publish_to_on_screen_render(page):
     """Measures wall-clock time from "a sample was published" to "the
     browser finished drawing it", end to end through the real WebSocket
     and the real app.js rendering path (not just message arrival)."""
-    with LiveServer(GUI_CONFIG) as server:
+    with LiveServer(create_app(GUI_CONFIG)) as server:
         page.goto(server.url)
         page.wait_for_function(
             "document.getElementById('status').textContent === 'connected'",
@@ -152,7 +153,7 @@ def test_browser_keeps_only_the_current_window_not_full_history(page):
     still be capped at the window size, not the total sample count."""
     maxlen = 50
     n_messages = 2000
-    with LiveServer(GUI_CONFIG) as server:
+    with LiveServer(create_app(GUI_CONFIG)) as server:
         page.goto(server.url)
         page.wait_for_function(
             "document.getElementById('status').textContent === 'connected'",
@@ -184,7 +185,7 @@ def test_browser_memory_stays_bounded_under_sustained_streaming(page):
     maxlen = 50
     n_messages_per_half = 3000
 
-    with LiveServer(GUI_CONFIG) as server:
+    with LiveServer(create_app(GUI_CONFIG)) as server:
         page.goto(server.url)
         page.wait_for_function(
             "document.getElementById('status').textContent === 'connected'",
@@ -222,3 +223,112 @@ def test_browser_memory_stays_bounded_under_sustained_streaming(page):
         f"JS heap grew {growth_ratio:.2f}x ({baseline_heap} -> {after_heap} "
         f"bytes) after {n_messages_per_half} more messages past warm-up -- "
         f"looks like the frontend is retaining data instead of replacing it")
+
+
+def _make_settings_app(tmp_path, window_title="Before"):
+    """Builds a real app wired for /api/settings/restart the same way
+    aves.web.__main__.main() does, backed by a real config file and a
+    real (tiny) file replay, so restart genuinely stops and rebuilds an
+    Acquisition rather than faking it."""
+    import types
+
+    from aves.utils import parse_config
+    from aves.web.__main__ import AcquisitionManager
+
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        "version = 3\n\n"
+        "[gui]\n"
+        'x_column = "t"\n'
+        "zoom_all_together = true\n"
+        f'window_title = "{window_title}"\n'
+        "axes = []\n\n"
+        "[output]\n"
+        'columns = ["t"]\n')
+    infile = tmp_path / "in.txt"
+    infile.write_text("0\n1\n2\n")
+
+    initial_config = parse_config(config_file=str(config_file))
+    app = create_app(initial_config["gui"], config_path=str(config_file))
+    args = types.SimpleNamespace(
+        port=str(infile), config_file=str(config_file), outfile=None,
+        plot_win_size=200, tmeas=float("inf"), plot_every_n_samples=1)
+    manager = AcquisitionManager(app, args)
+    app.state.restart_callback = manager.restart
+    manager.start(initial_config)
+    return app, config_file
+
+
+def test_settings_page_saves_and_restarts_with_the_edited_config(page, tmp_path):
+    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+
+    with LiveServer(app) as server:
+        page.goto(f"{server.url}/settings.html")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+
+        text = page.input_value("#config-text")
+        assert "Before" in text
+        new_text = text.replace('window_title = "Before"', 'window_title = "After"')
+        page.fill("#config-text", new_text)
+        page.click("#restart-btn")
+
+        page.wait_for_url(f"{server.url}/", timeout=5000)
+        page.wait_for_function("document.title === 'After'", timeout=5000)
+
+    assert 'window_title = "After"' in config_file.read_text()
+
+
+def test_settings_changes_reload_other_already_open_chart_tabs(page, tmp_path):
+    """A restart from the settings page must refresh every open chart
+    tab, not just the one used to trigger it -- otherwise a second tab
+    would keep rendering against stale axes/columns."""
+    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+
+    with LiveServer(app) as server:
+        chart_page = page
+        chart_page.goto(server.url)
+        chart_page.wait_for_function(
+            "document.getElementById('status').textContent === 'connected'",
+            timeout=5000)
+
+        # A separate browser context (not chart_page.context.new_page(),
+        # which Playwright disallows for a context created via the
+        # browser.new_page() shortcut) -- the config-changed broadcast is
+        # server-side and reaches every connected client regardless.
+        settings_page = chart_page.context.browser.new_page()
+        settings_page.goto(f"{server.url}/settings.html")
+        settings_page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+        text = settings_page.input_value("#config-text")
+        new_text = text.replace('window_title = "Before"', 'window_title = "Bystander"')
+        settings_page.fill("#config-text", new_text)
+        settings_page.click("#restart-btn")
+        settings_page.wait_for_url(f"{server.url}/", timeout=5000)
+
+        # chart_page never clicked anything.
+        chart_page.wait_for_function("document.title === 'Bystander'", timeout=5000)
+        settings_page.close()
+
+
+def test_settings_page_reports_invalid_toml_without_saving(page, tmp_path):
+    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+    original_text = config_file.read_text()
+
+    with LiveServer(app) as server:
+        page.goto(f"{server.url}/settings.html")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+
+        page.fill("#config-text", "not valid toml [[[")
+        page.click("#save-btn")
+        page.wait_for_function(
+            "document.getElementById('status').classList.contains('error')",
+            timeout=5000)
+        status_text = page.text_content("#status")
+
+    assert "Could not save" in status_text
+    assert config_file.read_text() == original_text

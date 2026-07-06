@@ -1,8 +1,11 @@
 import threading
+import types
+
+import pytest
 
 from aves.io import DataBuffers, ReadSensorFile
 from aves.acquisition import Acquisition
-from aves.web.__main__ import _acquisition_loop
+from aves.web.__main__ import AcquisitionManager, _acquisition_loop
 
 
 class FakeBroadcaster:
@@ -99,3 +102,171 @@ def test_acquisition_loop_stops_when_stop_event_is_set_between_batches(tmp_path)
         _acquisition_loop(acquisition, broadcaster, stop_event)
 
     assert len(broadcaster.published) == 3
+
+
+def _write_config(path, x_column="a", columns=("a", "b")):
+    columns_toml = ", ".join(f'"{c}"' for c in columns)
+    path.write_text(
+        "version = 3\n\n"
+        "[gui]\n"
+        f'x_column = "{x_column}"\n'
+        "zoom_all_together = true\n"
+        "axes = []\n\n"
+        "[output]\n"
+        f"columns = [{columns_toml}]\n")
+
+
+def _make_args(port, config_file, outfile=None, plot_win_size=None,
+               tmeas=float('inf'), plot_every_n_samples=1):
+    return types.SimpleNamespace(
+        port=port, config_file=config_file, outfile=outfile,
+        plot_win_size=plot_win_size, tmeas=tmeas,
+        plot_every_n_samples=plot_every_n_samples)
+
+
+def _make_app():
+    return types.SimpleNamespace(
+        state=types.SimpleNamespace(broadcaster=FakeBroadcaster(), gui_config=None))
+
+
+def test_acquisition_manager_start_and_stop(tmp_path):
+    from aves.utils import parse_config
+
+    config_file = tmp_path / "config.toml"
+    _write_config(config_file)
+    infile = tmp_path / "in.txt"
+    infile.write_text("1\t2.0\n3\t4.0\n")
+
+    args = _make_args(port=str(infile), config_file=str(config_file))
+    app = _make_app()
+    manager = AcquisitionManager(app, args)
+    config = parse_config(config_file=str(config_file))
+
+    manager.start(config)
+    assert manager.is_running
+    assert app.state.gui_config == config["gui"]
+
+    manager.stop()
+    assert not manager.is_running
+    assert app.state.broadcaster.published
+
+
+def test_acquisition_manager_start_twice_raises(tmp_path):
+    from aves.utils import parse_config
+
+    config_file = tmp_path / "config.toml"
+    _write_config(config_file)
+    infile = tmp_path / "in.txt"
+    infile.write_text("1\t2.0\n")
+    args = _make_args(port=str(infile), config_file=str(config_file))
+    app = _make_app()
+    manager = AcquisitionManager(app, args)
+    config = parse_config(config_file=str(config_file))
+
+    manager.start(config)
+    try:
+        with pytest.raises(RuntimeError, match="already running"):
+            manager.start(config)
+    finally:
+        manager.stop()
+
+
+def test_acquisition_manager_stop_without_start_is_a_noop(tmp_path):
+    config_file = tmp_path / "config.toml"
+    _write_config(config_file)
+    args = _make_args(port=str(tmp_path / "in.txt"), config_file=str(config_file))
+    app = _make_app()
+    manager = AcquisitionManager(app, args)
+
+    manager.stop()
+    assert not manager.is_running
+
+
+def test_acquisition_manager_start_cleans_up_on_failure(tmp_path):
+    from aves.utils import parse_config
+
+    config_file = tmp_path / "config.toml"
+    # No "output" section: build_input_device requires one for file replay.
+    config_file.write_text(
+        'version = 3\n\n[gui]\nx_column = "a"\nzoom_all_together = true\naxes = []\n')
+    infile = tmp_path / "in.txt"
+    infile.write_text("1\t2.0\n")
+    args = _make_args(port=str(infile), config_file=str(config_file))
+    app = _make_app()
+    manager = AcquisitionManager(app, args)
+    config = parse_config(config_file=str(config_file))
+
+    with pytest.raises(ValueError):
+        manager.start(config)
+    assert not manager.is_running
+
+
+def test_acquisition_manager_restart_reloads_config_from_disk(tmp_path):
+    from aves.utils import parse_config
+
+    config_file = tmp_path / "config.toml"
+    _write_config(config_file, x_column="a")
+    infile = tmp_path / "in.txt"
+    infile.write_text("1\t2.0\n")
+    args = _make_args(port=str(infile), config_file=str(config_file))
+    app = _make_app()
+    manager = AcquisitionManager(app, args)
+    config = parse_config(config_file=str(config_file))
+    manager.start(config)
+
+    # Simulate the settings editor having saved a change to disk.
+    _write_config(config_file, x_column="b")
+
+    new_gui_config = manager.restart()
+
+    assert new_gui_config["x_column"] == "b"
+    assert app.state.gui_config["x_column"] == "b"
+    assert manager.is_running
+    manager.stop()
+
+
+def test_acquisition_manager_restart_can_switch_config_path(tmp_path):
+    from aves.utils import parse_config
+
+    config_file_a = tmp_path / "a.toml"
+    config_file_b = tmp_path / "b.toml"
+    _write_config(config_file_a, x_column="a")
+    _write_config(config_file_b, x_column="b")
+    infile = tmp_path / "in.txt"
+    infile.write_text("1\t2.0\n")
+    args = _make_args(port=str(infile), config_file=str(config_file_a))
+    app = _make_app()
+    manager = AcquisitionManager(app, args)
+    config = parse_config(config_file=str(config_file_a))
+    manager.start(config)
+
+    new_gui_config = manager.restart(config_path=str(config_file_b))
+
+    assert new_gui_config["x_column"] == "b"
+    assert args.config_file == str(config_file_b)
+    manager.stop()
+
+
+def test_acquisition_manager_restart_failure_leaves_nothing_running(tmp_path):
+    """restart() doesn't roll back: if the new config fails to build, the
+    old acquisition has already been stopped, so nothing is running
+    afterwards -- the caller (the web /api/settings/restart endpoint) is
+    expected to surface the raised error rather than pretend it worked."""
+    from aves.utils import parse_config
+
+    config_file = tmp_path / "config.toml"
+    _write_config(config_file, x_column="a")
+    infile = tmp_path / "in.txt"
+    infile.write_text("1\t2.0\n")
+    args = _make_args(port=str(infile), config_file=str(config_file))
+    app = _make_app()
+    manager = AcquisitionManager(app, args)
+    config = parse_config(config_file=str(config_file))
+    manager.start(config)
+
+    broken_config_file = tmp_path / "broken.toml"
+    broken_config_file.write_text('version = 3\n\n[gui]\nx_column = "a"\n')
+
+    with pytest.raises(ValueError):
+        manager.restart(config_path=str(broken_config_file))
+    assert not manager.is_running
