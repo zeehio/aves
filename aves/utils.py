@@ -35,25 +35,40 @@ def require_keys(mapping, keys, name):
     return mapping
 
 
-def parse_config(config_file="config.toml"):
-    if config_file.endswith("json"):
+def _reject_non_toml_extension(source_name):
+    if source_name.endswith("json"):
         raise ValueError("Please use aves < 3.0.0")
-    if config_file.endswith((".yaml", ".yml")):
+    if source_name.endswith((".yaml", ".yml")):
         raise ValueError(
-            f"{config_file} looks like a YAML file. Since aves 4.0.0, "
+            f"{source_name} looks like a YAML file. Since aves 4.0.0, "
             "config files use TOML (config.toml) instead. Please convert "
             "it -- see the README for the new schema.")
-    with open(config_file, "rb") as stream:
-        try:
-            data = tomllib.load(stream)
-        except tomllib.TOMLDecodeError as exc:
-            raise ValueError(f"Could not parse {config_file} as TOML: {exc}") from exc
+
+
+def parse_config_text(text, source_name="config.toml"):
+    """
+    Parses already-read TOML config text, validating its 'version' key.
+    Shared by parse_config (reading from disk) and the web settings editor
+    (validating text a browser is about to save, before it touches disk).
+    """
+    _reject_non_toml_extension(source_name)
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise ValueError(f"Could not parse {source_name} as TOML: {exc}") from exc
     if "version" not in data:
         raise ValueError(
-            f"{config_file} is missing the required 'version' key "
+            f"{source_name} is missing the required 'version' key "
             "(expected version = 3)")
     if data["version"] != 3:
         raise ValueError(
-            f"{config_file} has version {data['version']!r}, but this "
+            f"{source_name} has version {data['version']!r}, but this "
             "version of aves only supports config files with version = 3")
     return data
+
+
+def parse_config(config_file="config.toml"):
+    _reject_non_toml_extension(config_file)
+    with open(config_file, "r", encoding="utf-8") as stream:
+        text = stream.read()
+    return parse_config_text(text, source_name=config_file)

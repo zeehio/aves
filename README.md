@@ -52,6 +52,54 @@ Raspberry Pi with no monitor attached). Everything else (acquisition,
 `--outfile`, `--time`, replaying a recorded file as `--port`) works exactly
 the same either way.
 
+## Web-based viewer
+
+As an alternative to the desktop plotting window, you can view and record
+the same acquisition from a browser -- handy when the machine running aves
+has no display, or you'd rather watch from another device on the same
+network:
+
+    pip install "aves[web]"
+    cd new_project_dir
+    python3 -m aves.web --port <port> --outfile "test.txt"
+
+This prints a URL with a one-time access token, e.g.:
+
+    Open http://127.0.0.1:8000/?token=Ax3f... to view the acquisition.
+
+Open that URL in a browser on the same machine to see live charts, laid
+out the same way the desktop GUI would from the same `config.toml`. The
+token is required by default: anyone who has it can view the acquired
+data and read/write the config file through the browser, so treat the URL
+like a password. Pass `--token yourvalue` to pin a fixed token instead of
+a fresh random one (e.g. for scripting), or `--token=''` to disable the
+check entirely -- only if you trust everyone who can reach the port.
+
+By default the server only listens on `127.0.0.1` (`--host` changes that).
+Combined with `--token=''`, opening it up to a wider network would expose
+both the acquired data and arbitrary local file read/write to anyone who
+can reach the port -- only do that on a network you trust.
+
+### Editing the config from the browser
+
+Click **Settings** in the web viewer to open `config.toml` in a text
+editor in the browser. From there:
+
+- **Save** writes your edits back to the config file (after checking it's
+  valid TOML) without touching the running acquisition.
+- **Save & restart acquisition** saves, then stops and restarts the
+  acquisition with the new config -- useful after changing axes, columns,
+  or Arduino settings without leaving the browser or restarting the
+  process by hand. Every open chart tab reloads on its own once this
+  finishes.
+- **Load a different file** points the editor (and, after a restart, the
+  running acquisition) at another `.toml` path.
+
+See `python3 -m aves.web --help` for the full list of options -- most are
+shared with `aves.realtime` (`--no-save`, `--time`, `--plot_win_size`,
+`--config`, ...); the ones specific to the web viewer are `--host`,
+`--web-port` and `--token`.
+
 ## Aves configuration
 
 Aves is configured using a `toml` file with four sections:
@@ -134,9 +182,9 @@ The `gui` defines the visualization options, including:
   subplot a human-readable label.
 
   Each axis also accepts a small set of display options: `xlim`, `ylim` (axis limits, as `[min, max]`), `xlabel`, `ylabel`, `title`.
-  These are deliberately a fixed, small vocabulary rather than arbitrary plotting-library options: aves may grow other renderers
-  besides its current matplotlib-based GUI (a web-based viewer, for instance), and any option here needs to mean the same thing
-  regardless of what eventually draws it.
+  These are deliberately a fixed, small vocabulary rather than arbitrary plotting-library options: the same `gui` section drives
+  both the desktop, matplotlib-based GUI (`aves.realtime`) and the [web-based viewer](#web-based-viewer) (`aves.web`), so any
+  option here needs to mean the same thing regardless of which one draws it.
 
 Besides, there is the name of the window `window_title` and the `refresh_time_ms` that controls how often the GUI is refreshed.
 
