@@ -11,7 +11,24 @@
 <h1>Config file</h1>
 <p>Editing: <code id="config-path"></code></p>
 <div id="status">loading…</div>
-<textarea id="config-text" rows="24" spellcheck="false"></textarea>
+
+<div id="form-view">
+    <fieldset id="input-fieldset">
+        <legend>Arduino input</legend>
+        <div id="input-fields"></div>
+    </fieldset>
+
+    <fieldset id="gui-fieldset">
+        <legend>GUI</legend>
+        <div id="gui-fields"></div>
+    </fieldset>
+
+    <fieldset id="output-fieldset">
+        <legend>Output</legend>
+        <div id="output-fields"></div>
+    </fieldset>
+</div>
+
 <div class="settings-actions">
     <button id="reload-btn" type="button">Reload from disk</button>
     <button id="save-btn" type="button">Save</button>

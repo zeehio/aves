@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import errno
+import json
 import os
 import tomllib
 
@@ -35,27 +36,36 @@ def require_keys(mapping, keys, name):
     return mapping
 
 
-def _reject_non_toml_extension(source_name):
-    if source_name.endswith("json"):
-        raise ValueError("Please use aves < 3.0.0")
+def _reject_yaml_extension(source_name):
     if source_name.endswith((".yaml", ".yml")):
         raise ValueError(
-            f"{source_name} looks like a YAML file. Since aves 4.0.0, "
-            "config files use TOML (config.toml) instead. Please convert "
-            "it -- see the README for the new schema.")
+            f"{source_name} looks like a YAML file. Aves configs are TOML "
+            "(config.toml) or JSON (config.json), not YAML. Please convert "
+            "it -- see the README for the schema.")
+
+
+def _loads_toml_or_json(text, source_name):
+    "Parses text as JSON if source_name ends in '.json', TOML otherwise."
+    if source_name.endswith(".json"):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Could not parse {source_name} as JSON: {exc}") from exc
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise ValueError(f"Could not parse {source_name} as TOML: {exc}") from exc
 
 
 def parse_config_text(text, source_name="config.toml"):
     """
-    Parses already-read TOML config text, validating its 'version' key.
-    Shared by parse_config (reading from disk) and the web settings editor
-    (validating text a browser is about to save, before it touches disk).
+    Parses already-read TOML or JSON config text (picked by source_name's
+    extension), validating its 'version' key. Shared by parse_config
+    (reading from disk) and the web settings editor (validating text a
+    browser is about to save, before it touches disk).
     """
-    _reject_non_toml_extension(source_name)
-    try:
-        data = tomllib.loads(text)
-    except tomllib.TOMLDecodeError as exc:
-        raise ValueError(f"Could not parse {source_name} as TOML: {exc}") from exc
+    _reject_yaml_extension(source_name)
+    data = _loads_toml_or_json(text, source_name)
     if "version" not in data:
         raise ValueError(
             f"{source_name} is missing the required 'version' key "
@@ -68,7 +78,7 @@ def parse_config_text(text, source_name="config.toml"):
 
 
 def parse_config(config_file="config.toml"):
-    _reject_non_toml_extension(config_file)
+    _reject_yaml_extension(config_file)
     with open(config_file, "r", encoding="utf-8") as stream:
         text = stream.read()
     return parse_config_text(text, source_name=config_file)

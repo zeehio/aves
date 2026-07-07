@@ -82,18 +82,23 @@ can reach the port -- only do that on a network you trust.
 
 ### Editing the config from the browser
 
-Click **Settings** in the web viewer to open `config.toml` in a text
-editor in the browser. From there:
+Click **Settings** in the web viewer to edit the config as a form: baud
+rate, timeout and columns, the axes/subplot layout, and the output
+columns, as fields, dropdowns and checkboxes instead of raw text.
 
-- **Save** writes your edits back to the config file (after checking it's
-  valid TOML) without touching the running acquisition.
+- **Save** writes your edits back to the config file (after checking it
+  parses) without touching the running acquisition. The form always
+  writes JSON, so it only works if the active config is already a
+  `.json` file -- if you're using a `.toml` config, edit it with a text
+  editor on your computer instead (or "Load a different file" to switch
+  to a `.json` one, if you'd rather use the form).
 - **Save & restart acquisition** saves, then stops and restarts the
   acquisition with the new config -- useful after changing axes, columns,
   or Arduino settings without leaving the browser or restarting the
   process by hand. Every open chart tab reloads on its own once this
   finishes.
 - **Load a different file** points the editor (and, after a restart, the
-  running acquisition) at another `.toml` path.
+  running acquisition) at another `.toml` or `.json` path.
 
 See `python3 -m aves.web --help` for the full list of options -- most are
 shared with `aves.realtime` (`--no-save`, `--time`, `--plot_win_size`,
@@ -102,7 +107,9 @@ shared with `aves.realtime` (`--no-save`, `--time`, `--plot_win_size`,
 
 ## Aves configuration
 
-Aves is configured using a `toml` file with four sections:
+Aves is configured using a TOML (`config.toml`) or JSON (`config.json`)
+file -- whichever is more convenient; both use the same four sections and
+are interchangeable (aves picks the format from the file extension):
 
 - `version`: Just a value, must be 3.
 - `input`: Defines the aves input sources.

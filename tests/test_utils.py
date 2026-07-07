@@ -50,15 +50,31 @@ def test_parse_config_rejects_invalid_toml(tmp_path):
         parse_config(config_file=str(config_file))
 
 
-def test_parse_config_rejects_json_extension():
-    with pytest.raises(ValueError):
-        parse_config(config_file="config.json")
+def test_parse_config_reads_json(tmp_path):
+    config_file = tmp_path / "config.json"
+    config_file.write_text('{"version": 3, "foo": "bar"}')
+    data = parse_config(config_file=str(config_file))
+    assert data == {"version": 3, "foo": "bar"}
+
+
+def test_parse_config_rejects_invalid_json(tmp_path):
+    config_file = tmp_path / "config.json"
+    config_file.write_text("{not valid json")
+    with pytest.raises(ValueError, match="JSON"):
+        parse_config(config_file=str(config_file))
+
+
+def test_parse_config_rejects_wrong_version_in_json(tmp_path):
+    config_file = tmp_path / "config.json"
+    config_file.write_text('{"version": 2}')
+    with pytest.raises(ValueError, match="version"):
+        parse_config(config_file=str(config_file))
 
 
 def test_parse_config_rejects_yaml_extension(tmp_path):
     config_file = tmp_path / "config.yaml"
     config_file.write_text("version: 3\n")
-    with pytest.raises(ValueError, match="TOML"):
+    with pytest.raises(ValueError, match="YAML"):
         parse_config(config_file=str(config_file))
 
 

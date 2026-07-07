@@ -230,26 +230,37 @@ def test_browser_memory_stays_bounded_under_sustained_streaming(page):
         f"looks like the frontend is retaining data instead of replacing it")
 
 
-def _make_settings_app(tmp_path, window_title="Before", token=None):
+def _make_settings_app(tmp_path, window_title="Before", token=None, config_format="toml"):
     """Builds a real app wired for /api/settings/restart the same way
     aves.web.__main__.main() does, backed by a real config file and a
     real (tiny) file replay, so restart genuinely stops and rebuilds an
     Acquisition rather than faking it."""
+    import json
     import types
 
     from aves.utils import parse_config
     from aves.web.__main__ import AcquisitionManager
 
-    config_file = tmp_path / "config.toml"
-    config_file.write_text(
-        "version = 3\n\n"
-        "[gui]\n"
-        'x_column = "t"\n'
-        "zoom_all_together = true\n"
-        f'window_title = "{window_title}"\n'
-        "axes = []\n\n"
-        "[output]\n"
-        'columns = ["t"]\n')
+    config_file = tmp_path / f"config.{config_format}"
+    if config_format == "json":
+        config_file.write_text(json.dumps({
+            "version": 3,
+            "gui": {
+                "x_column": "t", "zoom_all_together": True,
+                "window_title": window_title, "axes": [],
+            },
+            "output": {"columns": ["t"]},
+        }))
+    else:
+        config_file.write_text(
+            "version = 3\n\n"
+            "[gui]\n"
+            'x_column = "t"\n'
+            "zoom_all_together = true\n"
+            f'window_title = "{window_title}"\n'
+            "axes = []\n\n"
+            "[output]\n"
+            'columns = ["t"]\n')
     infile = tmp_path / "in.txt"
     infile.write_text("0\n1\n2\n")
 
@@ -264,8 +275,11 @@ def _make_settings_app(tmp_path, window_title="Before", token=None):
     return app, config_file
 
 
-def test_settings_page_saves_and_restarts_with_the_edited_config(page, tmp_path):
-    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+def test_settings_form_edits_and_restarts_with_the_edited_config(page, tmp_path):
+    """The settings page's form editor end-to-end: edit a field, save,
+    restart, and see the change take effect. The form only ever writes
+    JSON, so this needs a .json config file."""
+    app, config_file = _make_settings_app(tmp_path, window_title="Before", config_format="json")
 
     with LiveServer(app) as server:
         page.goto(f"{server.url}/settings.html")
@@ -273,23 +287,24 @@ def test_settings_page_saves_and_restarts_with_the_edited_config(page, tmp_path)
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
 
-        text = page.input_value("#config-text")
-        assert "Before" in text
-        new_text = text.replace('window_title = "Before"', 'window_title = "After"')
-        page.fill("#config-text", new_text)
+        window_title_input = page.locator(
+            "#gui-fields .field", has_text="Window title").locator("input")
+        window_title_input.fill("After")
+        window_title_input.blur()
         page.click("#restart-btn")
 
         page.wait_for_url(f"{server.url}/", timeout=5000)
         page.wait_for_function("document.title === 'After'", timeout=5000)
 
-    assert 'window_title = "After"' in config_file.read_text()
+    import json
+    assert json.loads(config_file.read_text())["gui"]["window_title"] == "After"
 
 
 def test_settings_changes_reload_other_already_open_chart_tabs(page, tmp_path):
     """A restart from the settings page must refresh every open chart
     tab, not just the one used to trigger it -- otherwise a second tab
     would keep rendering against stale axes/columns."""
-    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+    app, config_file = _make_settings_app(tmp_path, window_title="Before", config_format="json")
 
     with LiveServer(app) as server:
         chart_page = page
@@ -307,9 +322,10 @@ def test_settings_changes_reload_other_already_open_chart_tabs(page, tmp_path):
         settings_page.wait_for_function(
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
-        text = settings_page.input_value("#config-text")
-        new_text = text.replace('window_title = "Before"', 'window_title = "Bystander"')
-        settings_page.fill("#config-text", new_text)
+        window_title_input = settings_page.locator(
+            "#gui-fields .field", has_text="Window title").locator("input")
+        window_title_input.fill("Bystander")
+        window_title_input.blur()
         settings_page.click("#restart-btn")
         settings_page.wait_for_url(f"{server.url}/", timeout=5000)
 
@@ -318,8 +334,12 @@ def test_settings_changes_reload_other_already_open_chart_tabs(page, tmp_path):
         settings_page.close()
 
 
-def test_settings_page_reports_invalid_toml_without_saving(page, tmp_path):
-    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+def test_settings_save_disabled_for_a_toml_config_with_a_clear_hint(page, tmp_path):
+    """The form only ever writes JSON, so pointed at a .toml config it
+    must not offer a Save/Restart that would just fail (or, worse,
+    silently corrupt the file) -- it should disable both and tell the
+    user to use a text editor or point at a .json config instead."""
+    app, config_file = _make_settings_app(tmp_path, window_title="Before", config_format="toml")
     original_text = config_file.read_text()
 
     with LiveServer(app) as server:
@@ -328,14 +348,11 @@ def test_settings_page_reports_invalid_toml_without_saving(page, tmp_path):
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
 
-        page.fill("#config-text", "not valid toml [[[")
-        page.click("#save-btn")
-        page.wait_for_function(
-            "document.getElementById('status').classList.contains('error')",
-            timeout=5000)
+        assert page.is_disabled("#save-btn")
+        assert page.is_disabled("#restart-btn")
         status_text = page.text_content("#status")
 
-    assert "Could not save" in status_text
+    assert "text editor" in status_text
     assert config_file.read_text() == original_text
 
 
@@ -379,7 +396,8 @@ def test_token_cookie_carries_over_to_a_plain_link_navigation(page):
 
 
 def test_settings_save_and_restart_work_with_a_token_configured(page, tmp_path):
-    app, config_file = _make_settings_app(tmp_path, window_title="Before", token=TOKEN)
+    app, config_file = _make_settings_app(
+        tmp_path, window_title="Before", token=TOKEN, config_format="json")
 
     with LiveServer(app) as server:
         page.goto(f"{server.url}/settings.html?token={TOKEN}")
@@ -387,12 +405,14 @@ def test_settings_save_and_restart_work_with_a_token_configured(page, tmp_path):
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
 
-        text = page.input_value("#config-text")
-        new_text = text.replace('window_title = "Before"', 'window_title = "After"')
-        page.fill("#config-text", new_text)
+        window_title_input = page.locator(
+            "#gui-fields .field", has_text="Window title").locator("input")
+        window_title_input.fill("After")
+        window_title_input.blur()
         page.click("#restart-btn")
 
         page.wait_for_url(f"{server.url}/", timeout=5000)
         page.wait_for_function("document.title === 'After'", timeout=5000)
 
-    assert 'window_title = "After"' in config_file.read_text()
+    import json
+    assert json.loads(config_file.read_text())["gui"]["window_title"] == "After"
