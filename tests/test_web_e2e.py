@@ -275,102 +275,10 @@ def _make_settings_app(tmp_path, window_title="Before", token=None, config_forma
     return app, config_file
 
 
-def test_settings_page_saves_and_restarts_with_the_edited_config(page, tmp_path):
-    app, config_file = _make_settings_app(tmp_path, window_title="Before")
-
-    with LiveServer(app) as server:
-        page.on("dialog", lambda dialog: dialog.accept())
-        page.goto(f"{server.url}/settings.html")
-        page.wait_for_function(
-            "document.getElementById('status').textContent.startsWith('Loaded')",
-            timeout=5000)
-        page.check('input[name="edit-mode"][value="raw"]')
-        page.wait_for_function(
-            "document.getElementById('status').textContent.startsWith('Loaded')",
-            timeout=5000)
-
-        text = page.input_value("#config-text")
-        assert "Before" in text
-        new_text = text.replace('window_title = "Before"', 'window_title = "After"')
-        page.fill("#config-text", new_text)
-        page.click("#restart-btn")
-
-        page.wait_for_url(f"{server.url}/", timeout=5000)
-        page.wait_for_function("document.title === 'After'", timeout=5000)
-
-    assert 'window_title = "After"' in config_file.read_text()
-
-
-def test_settings_changes_reload_other_already_open_chart_tabs(page, tmp_path):
-    """A restart from the settings page must refresh every open chart
-    tab, not just the one used to trigger it -- otherwise a second tab
-    would keep rendering against stale axes/columns."""
-    app, config_file = _make_settings_app(tmp_path, window_title="Before")
-
-    with LiveServer(app) as server:
-        chart_page = page
-        chart_page.goto(server.url)
-        chart_page.wait_for_function(
-            "document.getElementById('status').textContent === 'connected'",
-            timeout=5000)
-
-        # A separate browser context (not chart_page.context.new_page(),
-        # which Playwright disallows for a context created via the
-        # browser.new_page() shortcut) -- the config-changed broadcast is
-        # server-side and reaches every connected client regardless.
-        settings_page = chart_page.context.browser.new_page()
-        settings_page.on("dialog", lambda dialog: dialog.accept())
-        settings_page.goto(f"{server.url}/settings.html")
-        settings_page.wait_for_function(
-            "document.getElementById('status').textContent.startsWith('Loaded')",
-            timeout=5000)
-        settings_page.check('input[name="edit-mode"][value="raw"]')
-        settings_page.wait_for_function(
-            "document.getElementById('status').textContent.startsWith('Loaded')",
-            timeout=5000)
-        text = settings_page.input_value("#config-text")
-        new_text = text.replace('window_title = "Before"', 'window_title = "Bystander"')
-        settings_page.fill("#config-text", new_text)
-        settings_page.click("#restart-btn")
-        settings_page.wait_for_url(f"{server.url}/", timeout=5000)
-
-        # chart_page never clicked anything.
-        chart_page.wait_for_function("document.title === 'Bystander'", timeout=5000)
-        settings_page.close()
-
-
-def test_settings_page_reports_invalid_toml_without_saving(page, tmp_path):
-    app, config_file = _make_settings_app(tmp_path, window_title="Before")
-    original_text = config_file.read_text()
-
-    with LiveServer(app) as server:
-        page.on("dialog", lambda dialog: dialog.accept())
-        page.goto(f"{server.url}/settings.html")
-        page.wait_for_function(
-            "document.getElementById('status').textContent.startsWith('Loaded')",
-            timeout=5000)
-        page.check('input[name="edit-mode"][value="raw"]')
-        page.wait_for_function(
-            "document.getElementById('status').textContent.startsWith('Loaded')",
-            timeout=5000)
-
-        page.fill("#config-text", "not valid toml [[[")
-        page.click("#save-btn")
-        page.wait_for_function(
-            "document.getElementById('status').classList.contains('error')",
-            timeout=5000)
-        status_text = page.text_content("#status")
-
-    assert "Could not save" in status_text
-    assert config_file.read_text() == original_text
-
-
 def test_settings_form_edits_and_restarts_with_the_edited_config(page, tmp_path):
-    """The structured Form view (the default) end-to-end: edit a field
-    without ever touching raw TOML, save, restart, and see the change
-    take effect -- the same outcome as the raw-text tests above, but
-    exercising /api/settings/structured instead of /api/settings. The
-    Form only ever writes JSON, so this needs a .json config file."""
+    """The settings page's form editor end-to-end: edit a field, save,
+    restart, and see the change take effect. The form only ever writes
+    JSON, so this needs a .json config file."""
     app, config_file = _make_settings_app(tmp_path, window_title="Before", config_format="json")
 
     with LiveServer(app) as server:
@@ -392,25 +300,60 @@ def test_settings_form_edits_and_restarts_with_the_edited_config(page, tmp_path)
     assert json.loads(config_file.read_text())["gui"]["window_title"] == "After"
 
 
-def test_settings_mode_toggle_switches_between_form_and_raw_views(page, tmp_path):
-    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+def test_settings_changes_reload_other_already_open_chart_tabs(page, tmp_path):
+    """A restart from the settings page must refresh every open chart
+    tab, not just the one used to trigger it -- otherwise a second tab
+    would keep rendering against stale axes/columns."""
+    app, config_file = _make_settings_app(tmp_path, window_title="Before", config_format="json")
 
     with LiveServer(app) as server:
-        page.on("dialog", lambda dialog: dialog.accept())
+        chart_page = page
+        chart_page.goto(server.url)
+        chart_page.wait_for_function(
+            "document.getElementById('status').textContent === 'connected'",
+            timeout=5000)
+
+        # A separate browser context (not chart_page.context.new_page(),
+        # which Playwright disallows for a context created via the
+        # browser.new_page() shortcut) -- the config-changed broadcast is
+        # server-side and reaches every connected client regardless.
+        settings_page = chart_page.context.browser.new_page()
+        settings_page.goto(f"{server.url}/settings.html")
+        settings_page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+        window_title_input = settings_page.locator(
+            "#gui-fields .field", has_text="Window title").locator("input")
+        window_title_input.fill("Bystander")
+        window_title_input.blur()
+        settings_page.click("#restart-btn")
+        settings_page.wait_for_url(f"{server.url}/", timeout=5000)
+
+        # chart_page never clicked anything.
+        chart_page.wait_for_function("document.title === 'Bystander'", timeout=5000)
+        settings_page.close()
+
+
+def test_settings_save_disabled_for_a_toml_config_with_a_clear_hint(page, tmp_path):
+    """The form only ever writes JSON, so pointed at a .toml config it
+    must not offer a Save/Restart that would just fail (or, worse,
+    silently corrupt the file) -- it should disable both and tell the
+    user to use a text editor or point at a .json config instead."""
+    app, config_file = _make_settings_app(tmp_path, window_title="Before", config_format="toml")
+    original_text = config_file.read_text()
+
+    with LiveServer(app) as server:
         page.goto(f"{server.url}/settings.html")
         page.wait_for_function(
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
-        assert page.is_visible("#form-view")
-        assert not page.is_visible("#raw-view")
 
-        page.check('input[name="edit-mode"][value="raw"]')
-        page.wait_for_function(
-            "document.getElementById('status').textContent.startsWith('Loaded')",
-            timeout=5000)
-        assert not page.is_visible("#form-view")
-        assert page.is_visible("#raw-view")
-        assert "Before" in page.input_value("#config-text")
+        assert page.is_disabled("#save-btn")
+        assert page.is_disabled("#restart-btn")
+        status_text = page.text_content("#status")
+
+    assert "text editor" in status_text
+    assert config_file.read_text() == original_text
 
 
 TOKEN = "e2e-test-token"
@@ -453,25 +396,23 @@ def test_token_cookie_carries_over_to_a_plain_link_navigation(page):
 
 
 def test_settings_save_and_restart_work_with_a_token_configured(page, tmp_path):
-    app, config_file = _make_settings_app(tmp_path, window_title="Before", token=TOKEN)
+    app, config_file = _make_settings_app(
+        tmp_path, window_title="Before", token=TOKEN, config_format="json")
 
     with LiveServer(app) as server:
-        page.on("dialog", lambda dialog: dialog.accept())
         page.goto(f"{server.url}/settings.html?token={TOKEN}")
         page.wait_for_function(
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
-        page.check('input[name="edit-mode"][value="raw"]')
-        page.wait_for_function(
-            "document.getElementById('status').textContent.startsWith('Loaded')",
-            timeout=5000)
 
-        text = page.input_value("#config-text")
-        new_text = text.replace('window_title = "Before"', 'window_title = "After"')
-        page.fill("#config-text", new_text)
+        window_title_input = page.locator(
+            "#gui-fields .field", has_text="Window title").locator("input")
+        window_title_input.fill("After")
+        window_title_input.blur()
         page.click("#restart-btn")
 
         page.wait_for_url(f"{server.url}/", timeout=5000)
         page.wait_for_function("document.title === 'After'", timeout=5000)
 
-    assert 'window_title = "After"' in config_file.read_text()
+    import json
+    assert json.loads(config_file.read_text())["gui"]["window_title"] == "After"

@@ -82,25 +82,16 @@ can reach the port -- only do that on a network you trust.
 
 ### Editing the config from the browser
 
-Click **Settings** in the web viewer to edit `config.toml` in the browser,
-in either of two views:
-
-- **Form** (the default): baud rate, timeout and columns, the axes/subplot
-  layout, and the output columns, as fields, dropdowns and checkboxes
-  instead of raw text.
-- **Raw TOML**: the file's exact text in a `<textarea>`, comments and all.
-
-Switching views re-reads the file from disk, so unsaved edits in one don't
-carry over to the other -- pick whichever you want to work in, then use
-the buttons below (shared by both):
+Click **Settings** in the web viewer to edit the config as a form: baud
+rate, timeout and columns, the axes/subplot layout, and the output
+columns, as fields, dropdowns and checkboxes instead of raw text.
 
 - **Save** writes your edits back to the config file (after checking it
-  parses) without touching the running acquisition. In Form view, note that
-  round-tripping through the form regenerates the whole file as JSON, so
-  any comments or formatting in the original are not preserved (Raw TOML
-  keeps them) -- and since the Form only ever writes JSON, saving from it
-  requires the active config to already be a `.json` file (switch to Raw
-  TOML, or Load a `.json` config, if you're editing a `.toml` one).
+  parses) without touching the running acquisition. The form always
+  writes JSON, so it only works if the active config is already a
+  `.json` file -- if you're using a `.toml` config, edit it with a text
+  editor on your computer instead (or "Load a different file" to switch
+  to a `.json` one, if you'd rather use the form).
 - **Save & restart acquisition** saves, then stops and restarts the
   acquisition with the new config -- useful after changing axes, columns,
   or Arduino settings without leaving the browser or restarting the

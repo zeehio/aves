@@ -1,29 +1,23 @@
-// Config file editor. Two views of the same file:
-//  - "Form": a structured editor built from /api/settings/structured (the
-//    file parsed to a plain dict). Easier to use, but round-tripping a
-//    dict through a rebuilt TOML file loses comments/formatting.
-//  - "Raw TOML": the original text from /api/settings, in a <textarea>,
-//    exactly like before -- for anyone who cares about the above.
-// Switching views re-reads the file from disk (via a confirm() dialog, if
-// the current view might have unsaved edits), rather than trying to keep
-// both in sync live.
+// Config file editor: a structured form built from /api/settings/structured
+// (the file parsed to a plain dict), mutated in place as fields are edited.
+// Saving always writes JSON (see aves/web/server.py), so Save/Save & restart
+// are disabled whenever the active config isn't a .json file -- edit a
+// .toml config with a text editor on your machine instead.
 
 const statusEl = document.getElementById("status");
 const pathEl = document.getElementById("config-path");
-const textEl = document.getElementById("config-text");
 const loadPathEl = document.getElementById("load-path");
-const formViewEl = document.getElementById("form-view");
-const rawViewEl = document.getElementById("raw-view");
 const inputFieldsEl = document.getElementById("input-fields");
 const guiFieldsEl = document.getElementById("gui-fields");
 const outputFieldsEl = document.getElementById("output-fields");
+const saveBtn = document.getElementById("save-btn");
+const restartBtn = document.getElementById("restart-btn");
 
-// The parsed config dict backing the Form view, mutated in place as the
-// user edits fields -- so any key the form doesn't render (an axis'
+// The parsed config dict backing the form, mutated in place as the user
+// edits fields -- so any key the form doesn't render (an axis'
 // columns_legend, say) survives untouched as long as its containing
 // object isn't itself rebuilt from scratch.
 let configData = null;
-let mode = "form"; // "form" | "raw"
 
 function setStatus(text, isError) {
     statusEl.textContent = text;
@@ -294,9 +288,18 @@ function renderAll() {
     renderOutput();
 }
 
-// ---- loading/saving, either view ----
+// ---- loading/saving ----
 
-async function loadStructured() {
+function setSaveable(path) {
+    const saveable = path.endsWith(".json");
+    saveBtn.disabled = !saveable;
+    restartBtn.disabled = !saveable;
+    const reason = saveable ? "" : "Saving here only works for .json config files.";
+    saveBtn.title = reason;
+    restartBtn.title = reason;
+}
+
+async function refreshFromServer() {
     setStatus("Loading…");
     const response = await fetch("/api/settings/structured", { headers: authHeaders() });
     if (!response.ok) {
@@ -308,46 +311,24 @@ async function loadStructured() {
     pathEl.textContent = data.path;
     loadPathEl.value = data.path;
     renderAll();
+    setSaveable(data.path);
     if (data.path.endsWith(".json")) {
         setStatus("Loaded " + data.path);
     } else {
-        setStatus("Loaded " + data.path + " -- Save here requires a .json "
-            + "config file; switch to Raw TOML to save this one.");
+        setStatus("Loaded " + data.path + " -- this page only saves .json "
+            + "config files. Edit this one with a text editor on your "
+            + "computer, or use 'Load a different file' to point at a "
+            + ".json config.");
     }
     return true;
-}
-
-async function loadRaw() {
-    setStatus("Loading…");
-    const response = await fetch("/api/settings", { headers: authHeaders() });
-    if (!response.ok) {
-        setStatus("Could not load settings: " + await errorDetail(response), true);
-        return false;
-    }
-    const data = await response.json();
-    textEl.value = data.text;
-    pathEl.textContent = data.path;
-    loadPathEl.value = data.path;
-    setStatus("Loaded " + data.path);
-    return true;
-}
-
-async function refreshFromServer() {
-    return mode === "form" ? loadStructured() : loadRaw();
 }
 
 async function save() {
-    const response = mode === "form"
-        ? await fetch("/api/settings/structured", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json", ...authHeaders() },
-            body: JSON.stringify({ config: configData }),
-        })
-        : await fetch("/api/settings", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json", ...authHeaders() },
-            body: JSON.stringify({ text: textEl.value }),
-        });
+    const response = await fetch("/api/settings/structured", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ config: configData }),
+    });
     if (!response.ok) {
         setStatus("Could not save: " + await errorDetail(response), true);
         return false;
@@ -355,26 +336,9 @@ async function save() {
     return true;
 }
 
-for (const radio of document.querySelectorAll('input[name="edit-mode"]')) {
-    radio.addEventListener("change", async (event) => {
-        const newMode = event.target.value;
-        if (newMode === mode) {
-            return;
-        }
-        if (!confirm("Switching views re-reads the file from disk, discarding any unsaved edits here. Continue?")) {
-            document.querySelector(`input[name="edit-mode"][value="${mode}"]`).checked = true;
-            return;
-        }
-        mode = newMode;
-        formViewEl.style.display = mode === "form" ? "" : "none";
-        rawViewEl.style.display = mode === "raw" ? "" : "none";
-        await refreshFromServer();
-    });
-}
-
 document.getElementById("reload-btn").addEventListener("click", refreshFromServer);
 
-document.getElementById("save-btn").addEventListener("click", async () => {
+saveBtn.addEventListener("click", async () => {
     if (await save()) {
         setStatus("Saved " + pathEl.textContent);
     }
@@ -395,7 +359,7 @@ document.getElementById("load-other-btn").addEventListener("click", async () => 
     await refreshFromServer();
 });
 
-document.getElementById("restart-btn").addEventListener("click", async () => {
+restartBtn.addEventListener("click", async () => {
     if (!(await save())) {
         return;
     }

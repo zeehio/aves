@@ -15,29 +15,32 @@ create_app(gui_config, token=...) returns a FastAPI app exposing:
    calls app.state.broadcaster.publish(data) after each step -- this
    module has no opinion on what that data source is.
  - GET/PUT /api/settings, POST /api/settings/load, POST
-   /api/settings/restart: the config file editor. This module only
-   reads/writes text and validates TOML syntax + the 'version' key; it
-   has no opinion on what a valid 'gui'/'input'/'output' section looks
-   like beyond that -- restarting is where the real, structural
-   validation happens (aves.wiring raising a clear error), via whatever
-   restart_callback the caller wires up (aves.web.__main__ wires this
-   to actually stop/rebuild/restart the acquisition; without one, the
-   restart endpoint just reports that restarting isn't supported).
+   /api/settings/restart: the config file editor. GET/PUT work with
+   plain text and validate TOML or JSON syntax (picked by the config
+   path's extension, see aves.utils.parse_config_text) plus the
+   'version' key; this module has no opinion on what a valid
+   'gui'/'input'/'output' section looks like beyond that -- restarting
+   is where the real, structural validation happens (aves.wiring
+   raising a clear error), via whatever restart_callback the caller
+   wires up (aves.web.__main__ wires this to actually stop/rebuild/
+   restart the acquisition; without one, the restart endpoint just
+   reports that restarting isn't supported). The frontend's settings
+   page only uses /api/settings/structured below; GET/PUT /api/settings
+   remain for scripts/curl that want to read or write the exact file
+   text (e.g. to preserve a .toml file's comments, which the structured
+   form can't).
  - GET/PUT /api/settings/structured: the same config file, as a parsed
-   dict (GET) or accepting one to save (PUT), for the browser's
-   form-based editor -- an alternative to the raw-text /api/settings
-   above, not a replacement (round-tripping through a form necessarily
-   normalizes away comments and formatting, so the raw-text editor
-   stays available for anyone who cares about those). GET works for a
-   TOML or JSON config file alike (aves.utils.parse_config_text picks
-   the format from the extension); PUT only ever writes JSON (plain
-   json.dumps, no extra dependency -- the dict it's given came from a
-   browser's fetch() body, so it's already JSON-shaped data), so it
-   requires the active config to be a .json file, telling the browser
-   to use the raw-text editor or "Load a different file" otherwise.
-   Either way, PUT re-parses its own output through parse_config_text
-   before writing, so a config the form can produce but this module's
-   own reader would reject can never reach disk.
+   dict (GET) or accepting one to save (PUT) -- what the browser's
+   form-based settings page actually uses. GET works for a TOML or
+   JSON config file alike; PUT only ever writes JSON (plain json.dumps,
+   no extra dependency -- the dict it's given came from a browser's
+   fetch() body, so it's already JSON-shaped data), so it requires the
+   active config to be a .json file, telling the browser to edit a
+   .toml config with a text editor instead, or "Load a different
+   file" to point at a .json one. Either way, PUT re-parses its own
+   output through parse_config_text before writing, so a config the
+   form can produce but this module's own reader would reject can
+   never reach disk.
  - /, /settings.html: the frontend's two pages, rendered (not served
    verbatim) so the auth token can be embedded for the page's own JS to
    send back. /app.js, /settings.js, /style.css, /vendor/*: plain
