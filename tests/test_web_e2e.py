@@ -275,6 +275,70 @@ def _make_settings_app(tmp_path, window_title="Before", token=None, config_forma
     return app, config_file
 
 
+def test_settings_form_previews_layout_and_input_conversion(page, tmp_path):
+    """The settings page's live previews: a grid box per axis (placed by
+    row/col/rowspan/colspan, one fake series line per plotted column) and
+    an input-conversion table (raw example value times conversion_factor).
+    Both must track edits without requiring a save/reload round trip."""
+    import json
+
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps({
+        "version": 3,
+        "input": {"arduino": {"baudrate": 9600, "timeout": 3, "columns": [
+            {"name": "time_arduino", "conversion_factor": 0.001},
+            {"name": "Sensor 1", "conversion_factor": 0.004887586},
+        ]}},
+        "gui": {
+            "x_column": "time_arduino", "zoom_all_together": True,
+            "axes": [
+                {"name": "Sensor 1", "row": 0, "col": 0, "columns": ["Sensor 1"],
+                 "ylabel": "Sensor 1 (V)", "title": "Sensor 1 readings"},
+                {"name": "Empty", "row": 0, "col": 1, "columns": []},
+            ],
+        },
+        "output": {"columns": ["time_computer", "time_arduino", "Sensor 1"]},
+    }))
+    app = create_app({}, config_path=str(config_file))
+
+    with LiveServer(app) as server:
+        page.goto(f"{server.url}/settings.html")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+
+        # One preview box per axis, placed in the right grid cell, with a
+        # fake series line for the plotted axis and a "no columns" message
+        # for the empty one -- not just a raw dump of the axes array.
+        boxes = page.locator(".axis-preview-box")
+        assert boxes.count() == 2
+        assert "Sensor 1 readings" in boxes.nth(0).inner_text()
+        assert boxes.nth(0).locator(".axis-preview-svg polyline").count() == 1
+        assert "no columns" in boxes.nth(1).inner_text()
+
+        # Editing the conversion factor updates the input-preview table
+        # live, with no save/reload needed.
+        factor_input = page.locator(
+            "#input-fields table.rows-table:not(.preview-table) tbody tr"
+        ).nth(1).locator("input[type=number]")
+        factor_input.fill("2")
+        factor_input.dispatch_event("change")
+        preview_text = page.locator("#input-fields .preview-table").inner_text()
+        assert "Sensor 1\t1000\t× 2\t= 2000" in preview_text
+
+        # Moving axis 1 to a new row/col relocates its preview box, and
+        # adding a second column to it adds a second fake series line.
+        axis1 = page.locator(".axis-box").nth(0)
+        axis1.get_by_label("Row", exact=True).fill("1")
+        axis1.get_by_label("Row", exact=True).blur()
+        axis1.locator(".column-checkbox", has_text="time_arduino").locator("input").check()
+        page.wait_for_timeout(100)
+
+        moved_box = page.locator(".axis-preview-box").nth(0)
+        assert moved_box.evaluate("el => el.style.gridRow") == "2 / span 1"
+        assert moved_box.locator(".axis-preview-svg polyline").count() == 2
+
+
 def test_settings_form_edits_and_restarts_with_the_edited_config(page, tmp_path):
     """The settings page's form editor end-to-end: edit a field, save,
     restart, and see the change take effect. The form only ever writes

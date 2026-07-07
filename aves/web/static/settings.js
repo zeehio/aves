@@ -146,7 +146,7 @@ function renderInput() {
     arduino.columns.forEach((column, index) => {
         tbody.appendChild(el("tr", {}, [
             el("td", {}, [textInput(column.name, (v) => { column.name = v; renderAll(); })]),
-            el("td", {}, [numberInput(column.conversion_factor, (v) => { column.conversion_factor = v; }, { step: "any" })]),
+            el("td", {}, [numberInput(column.conversion_factor, (v) => { column.conversion_factor = v; renderAll(); }, { step: "any" })]),
             el("td", {}, [removeButton(() => { arduino.columns.splice(index, 1); renderAll(); })]),
         ]));
     });
@@ -154,6 +154,46 @@ function renderInput() {
         el("thead", {}, [el("tr", {}, [el("th", { text: "Name" }), el("th", { text: "Conversion factor" }), el("th", { text: "" })])]),
         tbody,
     ]));
+
+    inputFieldsEl.appendChild(renderInputPreview(arduino.columns));
+}
+
+// Illustrates what the Arduino sketch needs to print, and what aves turns
+// it into, without requiring an actual serial connection to look at.
+const EXAMPLE_RAW_VALUE = 1000;
+
+function renderInputPreview(columns) {
+    const box = el("div", { class: "input-preview" });
+    if (columns.length === 0) {
+        return box;
+    }
+    box.appendChild(el("p", { class: "hint" }, [document.createTextNode(
+        "Your Arduino sketch should print one line per sample, with these "
+        + columns.length + " value(s) separated by spaces, in this exact order:")]));
+    box.appendChild(el("div", {
+        class: "raw-line",
+        text: columns.map(() => EXAMPLE_RAW_VALUE).join(" "),
+    }));
+
+    const tbody = el("tbody");
+    columns.forEach((column) => {
+        const factor = column.conversion_factor ?? 1;
+        const converted = Math.round(EXAMPLE_RAW_VALUE * factor * 10000) / 10000;
+        tbody.appendChild(el("tr", {}, [
+            el("td", { text: column.name || "(unnamed)" }),
+            el("td", { text: String(EXAMPLE_RAW_VALUE) }),
+            el("td", { text: "× " + factor }),
+            el("td", { text: "= " + converted }),
+        ]));
+    });
+    box.appendChild(el("table", { class: "rows-table preview-table" }, [
+        el("thead", {}, [el("tr", {}, [
+            el("th", { text: "Column" }), el("th", { text: "Example raw value" }),
+            el("th", { text: "Conversion factor" }), el("th", { text: "Value aves records" }),
+        ])]),
+        tbody,
+    ]));
+    return box;
 }
 
 // ---- [gui] ----
@@ -161,13 +201,13 @@ function renderInput() {
 function renderAxis(axis, index, axesArray) {
     const box = el("fieldset", { class: "axis-box" }, [el("legend", { text: "Axis " + (index + 1) })]);
 
-    box.appendChild(labeled("Name", textInput(axis.name, (v) => { axis.name = v; })));
+    box.appendChild(labeled("Name", textInput(axis.name, (v) => { axis.name = v; renderAll(); })));
 
     const grid = el("div", { class: "axis-grid" });
-    grid.appendChild(labeled("Row", numberInput(axis.row ?? 0, (v) => { axis.row = v ?? 0; }, { min: 0, step: 1 })));
-    grid.appendChild(labeled("Col", numberInput(axis.col ?? 0, (v) => { axis.col = v ?? 0; }, { min: 0, step: 1 })));
-    grid.appendChild(labeled("Rowspan", numberInput(axis.rowspan ?? 1, (v) => { axis.rowspan = v ?? 1; }, { min: 1, step: 1 })));
-    grid.appendChild(labeled("Colspan", numberInput(axis.colspan ?? 1, (v) => { axis.colspan = v ?? 1; }, { min: 1, step: 1 })));
+    grid.appendChild(labeled("Row", numberInput(axis.row ?? 0, (v) => { axis.row = v ?? 0; renderAll(); }, { min: 0, step: 1 })));
+    grid.appendChild(labeled("Col", numberInput(axis.col ?? 0, (v) => { axis.col = v ?? 0; renderAll(); }, { min: 0, step: 1 })));
+    grid.appendChild(labeled("Rowspan", numberInput(axis.rowspan ?? 1, (v) => { axis.rowspan = v ?? 1; renderAll(); }, { min: 1, step: 1 })));
+    grid.appendChild(labeled("Colspan", numberInput(axis.colspan ?? 1, (v) => { axis.colspan = v ?? 1; renderAll(); }, { min: 1, step: 1 })));
     box.appendChild(grid);
 
     box.appendChild(el("p", { text: "Columns plotted on this axis:" }));
@@ -179,11 +219,12 @@ function renderAxis(axis, index, axesArray) {
         } else if (!checked && pos !== -1) {
             axis.columns.splice(pos, 1);
         }
+        renderAll();
     }));
 
-    box.appendChild(labeled("X label", textInput(axis.xlabel, (v) => { if (v) { axis.xlabel = v; } else { delete axis.xlabel; } })));
-    box.appendChild(labeled("Y label", textInput(axis.ylabel, (v) => { if (v) { axis.ylabel = v; } else { delete axis.ylabel; } })));
-    box.appendChild(labeled("Title", textInput(axis.title, (v) => { if (v) { axis.title = v; } else { delete axis.title; } })));
+    box.appendChild(labeled("X label", textInput(axis.xlabel, (v) => { if (v) { axis.xlabel = v; } else { delete axis.xlabel; } renderAll(); })));
+    box.appendChild(labeled("Y label", textInput(axis.ylabel, (v) => { if (v) { axis.ylabel = v; } else { delete axis.ylabel; } renderAll(); })));
+    box.appendChild(labeled("Title", textInput(axis.title, (v) => { if (v) { axis.title = v; } else { delete axis.title; } renderAll(); })));
 
     box.appendChild(limitField("X limits", axis, "xlim"));
     box.appendChild(limitField("Y limits", axis, "ylim"));
@@ -252,6 +293,107 @@ function renderGui() {
     const axesList = el("div", { class: "axes-list" });
     gui.axes.forEach((axis, index) => axesList.appendChild(renderAxis(axis, index, gui.axes)));
     guiFieldsEl.appendChild(axesList);
+
+    guiFieldsEl.appendChild(el("h3", { text: "Layout preview" }));
+    guiFieldsEl.appendChild(el("p", { class: "hint", text: "How these axes will be laid "
+        + "out and roughly what each will look like -- lines are fake, just "
+        + "standing in for whichever columns are plotted on that axis." }));
+    guiFieldsEl.appendChild(renderAxesPreview(gui.axes));
+}
+
+// Same series color rule as app.js' buildChart(), so a column is drawn in
+// the same color here as it will be on the real chart page.
+function seriesColor(index) {
+    return `hsl(${(index * 67) % 360}, 70%, 45%)`;
+}
+
+// Same row/col/rowspan/colspan -> grid math as app.js' getPlotShape().
+function getPlotShape(axes) {
+    let rows = 0;
+    let cols = 0;
+    for (const axis of axes) {
+        rows = Math.max(rows, (axis.row ?? 0) + (axis.rowspan ?? 1));
+        cols = Math.max(cols, (axis.col ?? 0) + (axis.colspan ?? 1));
+    }
+    return [Math.max(rows, 1), Math.max(cols, 1)];
+}
+
+// A deterministic wavy line, just to suggest "a data series lives here" --
+// not real data, so a different shape per series index is enough.
+function fakeSeriesPoints(width, height, seed) {
+    const steps = 24;
+    const points = [];
+    for (let i = 0; i <= steps; i++) {
+        const x = (i / steps) * width;
+        const y = height / 2
+            - Math.sin(i / 3 + seed) * (height * 0.32)
+            - Math.sin(i / 7 + seed * 2) * (height * 0.12);
+        points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    return points.join(" ");
+}
+
+function renderAxisPreviewBox(axis, index) {
+    const box = el("div", { class: "axis-preview-box" });
+    box.style.gridRow = `${(axis.row ?? 0) + 1} / span ${axis.rowspan ?? 1}`;
+    box.style.gridColumn = `${(axis.col ?? 0) + 1} / span ${axis.colspan ?? 1}`;
+
+    box.appendChild(el("div", {
+        class: "axis-preview-title",
+        text: axis.title || axis.name || ("Axis " + (index + 1)),
+    }));
+
+    const columns = axis.columns || [];
+    const plotArea = el("div", { class: "axis-preview-plot" });
+    if (columns.length === 0) {
+        plotArea.appendChild(el("div", { class: "axis-preview-empty", text: "(no columns plotted)" }));
+    } else {
+        const width = 200;
+        const height = 70;
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        svg.setAttribute("preserveAspectRatio", "none");
+        svg.classList.add("axis-preview-svg");
+        columns.forEach((name, i) => {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+            line.setAttribute("points", fakeSeriesPoints(width, height, i * 1.7 + 1));
+            line.setAttribute("fill", "none");
+            line.setAttribute("stroke", seriesColor(i));
+            line.setAttribute("stroke-width", "2");
+            svg.appendChild(line);
+        });
+        plotArea.appendChild(svg);
+    }
+    box.appendChild(plotArea);
+
+    if (axis.ylabel) {
+        box.appendChild(el("div", { class: "axis-preview-ylabel", text: axis.ylabel }));
+    }
+    if (axis.xlabel) {
+        box.appendChild(el("div", { class: "axis-preview-xlabel", text: axis.xlabel }));
+    }
+    if (columns.length > 0) {
+        box.appendChild(el("div", { class: "axis-preview-legend" },
+            columns.map((name, i) => el("span", {
+                class: "axis-preview-legend-item",
+                style: `color: ${seriesColor(i)}`,
+                text: name,
+            }))));
+    }
+    return box;
+}
+
+function renderAxesPreview(axes) {
+    const container = el("div", { class: "axes-preview" });
+    if (axes.length === 0) {
+        container.appendChild(el("p", { class: "hint", text: "No axes yet -- add one above." }));
+        return container;
+    }
+    const [rows, cols] = getPlotShape(axes);
+    container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    container.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    axes.forEach((axis, index) => container.appendChild(renderAxisPreviewBox(axis, index)));
+    return container;
 }
 
 // ---- [output] ----
