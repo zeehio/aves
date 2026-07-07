@@ -96,6 +96,8 @@ saving and restarting to see the effect:
   its title/labels and a stand-in line per plotted column (not real data,
   just showing where each series will appear).
 
+![Screenshot of the settings form, showing the input-conversion table and the axes layout preview](docs/images/settings_previews.png)
+
 - **Save** writes your edits back to the config file (after checking it
   parses) without touching the running acquisition. The form always
   writes JSON, so it only works if the active config is already a
