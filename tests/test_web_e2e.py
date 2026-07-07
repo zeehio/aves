@@ -268,7 +268,12 @@ def test_settings_page_saves_and_restarts_with_the_edited_config(page, tmp_path)
     app, config_file = _make_settings_app(tmp_path, window_title="Before")
 
     with LiveServer(app) as server:
+        page.on("dialog", lambda dialog: dialog.accept())
         page.goto(f"{server.url}/settings.html")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+        page.check('input[name="edit-mode"][value="raw"]')
         page.wait_for_function(
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
@@ -303,7 +308,12 @@ def test_settings_changes_reload_other_already_open_chart_tabs(page, tmp_path):
         # browser.new_page() shortcut) -- the config-changed broadcast is
         # server-side and reaches every connected client regardless.
         settings_page = chart_page.context.browser.new_page()
+        settings_page.on("dialog", lambda dialog: dialog.accept())
         settings_page.goto(f"{server.url}/settings.html")
+        settings_page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+        settings_page.check('input[name="edit-mode"][value="raw"]')
         settings_page.wait_for_function(
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
@@ -323,7 +333,12 @@ def test_settings_page_reports_invalid_toml_without_saving(page, tmp_path):
     original_text = config_file.read_text()
 
     with LiveServer(app) as server:
+        page.on("dialog", lambda dialog: dialog.accept())
         page.goto(f"{server.url}/settings.html")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+        page.check('input[name="edit-mode"][value="raw"]')
         page.wait_for_function(
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)
@@ -337,6 +352,52 @@ def test_settings_page_reports_invalid_toml_without_saving(page, tmp_path):
 
     assert "Could not save" in status_text
     assert config_file.read_text() == original_text
+
+
+def test_settings_form_edits_and_restarts_with_the_edited_config(page, tmp_path):
+    """The structured Form view (the default) end-to-end: edit a field
+    without ever touching raw TOML, save, restart, and see the change
+    take effect -- the same outcome as the raw-text tests above, but
+    exercising /api/settings/structured instead of /api/settings."""
+    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+
+    with LiveServer(app) as server:
+        page.goto(f"{server.url}/settings.html")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+
+        window_title_input = page.locator(
+            "#gui-fields .field", has_text="Window title").locator("input")
+        window_title_input.fill("After")
+        window_title_input.blur()
+        page.click("#restart-btn")
+
+        page.wait_for_url(f"{server.url}/", timeout=5000)
+        page.wait_for_function("document.title === 'After'", timeout=5000)
+
+    assert 'window_title = "After"' in config_file.read_text()
+
+
+def test_settings_mode_toggle_switches_between_form_and_raw_views(page, tmp_path):
+    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+
+    with LiveServer(app) as server:
+        page.on("dialog", lambda dialog: dialog.accept())
+        page.goto(f"{server.url}/settings.html")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+        assert page.is_visible("#form-view")
+        assert not page.is_visible("#raw-view")
+
+        page.check('input[name="edit-mode"][value="raw"]')
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+        assert not page.is_visible("#form-view")
+        assert page.is_visible("#raw-view")
+        assert "Before" in page.input_value("#config-text")
 
 
 TOKEN = "e2e-test-token"
@@ -382,7 +443,12 @@ def test_settings_save_and_restart_work_with_a_token_configured(page, tmp_path):
     app, config_file = _make_settings_app(tmp_path, window_title="Before", token=TOKEN)
 
     with LiveServer(app) as server:
+        page.on("dialog", lambda dialog: dialog.accept())
         page.goto(f"{server.url}/settings.html?token={TOKEN}")
+        page.wait_for_function(
+            "document.getElementById('status').textContent.startsWith('Loaded')",
+            timeout=5000)
+        page.check('input[name="edit-mode"][value="raw"]')
         page.wait_for_function(
             "document.getElementById('status').textContent.startsWith('Loaded')",
             timeout=5000)

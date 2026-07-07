@@ -23,6 +23,15 @@ create_app(gui_config, token=...) returns a FastAPI app exposing:
    restart_callback the caller wires up (aves.web.__main__ wires this
    to actually stop/rebuild/restart the acquisition; without one, the
    restart endpoint just reports that restarting isn't supported).
+ - GET/PUT /api/settings/structured: the same config file, as a parsed
+   dict (GET) or accepting one to serialize and save (PUT), for the
+   browser's form-based editor -- an alternative to the raw-text
+   /api/settings above, not a replacement (round-tripping through a
+   form necessarily normalizes away comments and formatting, so the
+   raw-text editor stays available for anyone who cares about those).
+   PUT re-parses its own tomli_w output through parse_config_text
+   before writing, so a config a form can produce but this module's
+   own reader would reject can never reach disk.
  - /, /settings.html: the frontend's two pages, rendered (not served
    verbatim) so the auth token can be embedded for the page's own JS to
    send back. /app.js, /settings.js, /style.css, /vendor/*: plain
@@ -49,6 +58,7 @@ import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import tomli_w
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -73,6 +83,10 @@ class SettingsText(BaseModel):
 
 class SettingsPath(BaseModel):
     path: str
+
+
+class SettingsStructured(BaseModel):
+    config: dict
 
 
 def _token_matches(expected, given):
@@ -193,6 +207,44 @@ def create_app(gui_config, config_path=None, token=None):
         except OSError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         return {"path": app.state.config_path}
+
+    @app.get("/api/settings/structured", dependencies=[Depends(require_token)])
+    async def get_settings_structured():
+        if app.state.config_path is None:
+            raise HTTPException(
+                status_code=404,
+                detail="this server was not started with a config file")
+        try:
+            text = Path(app.state.config_path).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+        try:
+            config = parse_config_text(text, source_name=app.state.config_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"path": app.state.config_path, "config": config}
+
+    @app.put("/api/settings/structured", dependencies=[Depends(require_token)])
+    async def save_settings_structured(payload: SettingsStructured):
+        if app.state.config_path is None:
+            raise HTTPException(
+                status_code=400,
+                detail="this server was not started with a config file")
+        try:
+            text = tomli_w.dumps(payload.config)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"could not turn this into a TOML file: {exc}")
+        try:
+            parse_config_text(text, source_name=app.state.config_path)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        try:
+            Path(app.state.config_path).write_text(text, encoding="utf-8")
+        except OSError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"path": app.state.config_path, "text": text}
 
     @app.post("/api/settings/load", dependencies=[Depends(require_token)])
     async def load_settings(payload: SettingsPath):

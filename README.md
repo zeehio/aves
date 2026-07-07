@@ -82,11 +82,23 @@ can reach the port -- only do that on a network you trust.
 
 ### Editing the config from the browser
 
-Click **Settings** in the web viewer to open `config.toml` in a text
-editor in the browser. From there:
+Click **Settings** in the web viewer to edit `config.toml` in the browser,
+in either of two views:
+
+- **Form** (the default): baud rate, timeout and columns, the axes/subplot
+  layout, and the output columns, as fields, dropdowns and checkboxes
+  instead of raw text.
+- **Raw TOML**: the file's exact text in a `<textarea>`, comments and all.
+
+Switching views re-reads the file from disk, so unsaved edits in one don't
+carry over to the other -- pick whichever you want to work in, then use
+the buttons below (shared by both):
 
 - **Save** writes your edits back to the config file (after checking it's
-  valid TOML) without touching the running acquisition.
+  valid TOML) without touching the running acquisition. In Form view, note
+  that round-tripping through the form regenerates the whole file, so any
+  comments or formatting in the original are not preserved (Raw TOML keeps
+  them).
 - **Save & restart acquisition** saves, then stops and restarts the
   acquisition with the new config -- useful after changing axes, columns,
   or Arduino settings without leaving the browser or restarting the
