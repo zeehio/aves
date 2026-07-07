@@ -84,7 +84,17 @@ can reach the port -- only do that on a network you trust.
 
 Click **Settings** in the web viewer to edit the config as a form: baud
 rate, timeout and columns, the axes/subplot layout, and the output
-columns, as fields, dropdowns and checkboxes instead of raw text.
+columns, as fields, dropdowns and checkboxes instead of raw text. Two
+live previews make the less obvious options easier to get right without
+saving and restarting to see the effect:
+
+- Each Arduino input column shows the raw line your sketch should print
+  and how a sample value turns into the number aves records, so it's
+  clear what `conversion_factor` actually does.
+- The axes/subplots section shows a small mock-up of the chart grid --
+  one box per axis, placed and sized by its row/col/rowspan/colspan, with
+  its title/labels and a stand-in line per plotted column (not real data,
+  just showing where each series will appear).
 
 - **Save** writes your edits back to the config file (after checking it
   parses) without touching the running acquisition. The form always
