@@ -94,18 +94,20 @@ Switching views re-reads the file from disk, so unsaved edits in one don't
 carry over to the other -- pick whichever you want to work in, then use
 the buttons below (shared by both):
 
-- **Save** writes your edits back to the config file (after checking it's
-  valid TOML) without touching the running acquisition. In Form view, note
-  that round-tripping through the form regenerates the whole file, so any
-  comments or formatting in the original are not preserved (Raw TOML keeps
-  them).
+- **Save** writes your edits back to the config file (after checking it
+  parses) without touching the running acquisition. In Form view, note that
+  round-tripping through the form regenerates the whole file as JSON, so
+  any comments or formatting in the original are not preserved (Raw TOML
+  keeps them) -- and since the Form only ever writes JSON, saving from it
+  requires the active config to already be a `.json` file (switch to Raw
+  TOML, or Load a `.json` config, if you're editing a `.toml` one).
 - **Save & restart acquisition** saves, then stops and restarts the
   acquisition with the new config -- useful after changing axes, columns,
   or Arduino settings without leaving the browser or restarting the
   process by hand. Every open chart tab reloads on its own once this
   finishes.
 - **Load a different file** points the editor (and, after a restart, the
-  running acquisition) at another `.toml` path.
+  running acquisition) at another `.toml` or `.json` path.
 
 See `python3 -m aves.web --help` for the full list of options -- most are
 shared with `aves.realtime` (`--no-save`, `--time`, `--plot_win_size`,
@@ -114,7 +116,9 @@ shared with `aves.realtime` (`--no-save`, `--time`, `--plot_win_size`,
 
 ## Aves configuration
 
-Aves is configured using a `toml` file with four sections:
+Aves is configured using a TOML (`config.toml`) or JSON (`config.json`)
+file -- whichever is more convenient; both use the same four sections and
+are interchangeable (aves picks the format from the file extension):
 
 - `version`: Just a value, must be 3.
 - `input`: Defines the aves input sources.

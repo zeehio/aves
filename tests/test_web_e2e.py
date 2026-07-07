@@ -230,26 +230,37 @@ def test_browser_memory_stays_bounded_under_sustained_streaming(page):
         f"looks like the frontend is retaining data instead of replacing it")
 
 
-def _make_settings_app(tmp_path, window_title="Before", token=None):
+def _make_settings_app(tmp_path, window_title="Before", token=None, config_format="toml"):
     """Builds a real app wired for /api/settings/restart the same way
     aves.web.__main__.main() does, backed by a real config file and a
     real (tiny) file replay, so restart genuinely stops and rebuilds an
     Acquisition rather than faking it."""
+    import json
     import types
 
     from aves.utils import parse_config
     from aves.web.__main__ import AcquisitionManager
 
-    config_file = tmp_path / "config.toml"
-    config_file.write_text(
-        "version = 3\n\n"
-        "[gui]\n"
-        'x_column = "t"\n'
-        "zoom_all_together = true\n"
-        f'window_title = "{window_title}"\n'
-        "axes = []\n\n"
-        "[output]\n"
-        'columns = ["t"]\n')
+    config_file = tmp_path / f"config.{config_format}"
+    if config_format == "json":
+        config_file.write_text(json.dumps({
+            "version": 3,
+            "gui": {
+                "x_column": "t", "zoom_all_together": True,
+                "window_title": window_title, "axes": [],
+            },
+            "output": {"columns": ["t"]},
+        }))
+    else:
+        config_file.write_text(
+            "version = 3\n\n"
+            "[gui]\n"
+            'x_column = "t"\n'
+            "zoom_all_together = true\n"
+            f'window_title = "{window_title}"\n'
+            "axes = []\n\n"
+            "[output]\n"
+            'columns = ["t"]\n')
     infile = tmp_path / "in.txt"
     infile.write_text("0\n1\n2\n")
 
@@ -358,8 +369,9 @@ def test_settings_form_edits_and_restarts_with_the_edited_config(page, tmp_path)
     """The structured Form view (the default) end-to-end: edit a field
     without ever touching raw TOML, save, restart, and see the change
     take effect -- the same outcome as the raw-text tests above, but
-    exercising /api/settings/structured instead of /api/settings."""
-    app, config_file = _make_settings_app(tmp_path, window_title="Before")
+    exercising /api/settings/structured instead of /api/settings. The
+    Form only ever writes JSON, so this needs a .json config file."""
+    app, config_file = _make_settings_app(tmp_path, window_title="Before", config_format="json")
 
     with LiveServer(app) as server:
         page.goto(f"{server.url}/settings.html")
@@ -376,7 +388,8 @@ def test_settings_form_edits_and_restarts_with_the_edited_config(page, tmp_path)
         page.wait_for_url(f"{server.url}/", timeout=5000)
         page.wait_for_function("document.title === 'After'", timeout=5000)
 
-    assert 'window_title = "After"' in config_file.read_text()
+    import json
+    assert json.loads(config_file.read_text())["gui"]["window_title"] == "After"
 
 
 def test_settings_mode_toggle_switches_between_form_and_raw_views(page, tmp_path):

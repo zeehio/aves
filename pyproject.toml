@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-web = ["fastapi", "uvicorn[standard]", "tomli-w"]
+web = ["fastapi", "uvicorn[standard]"]
 test = ["pytest", "httpx", "playwright"]
 
 [project.urls]

@@ -308,7 +308,12 @@ async function loadStructured() {
     pathEl.textContent = data.path;
     loadPathEl.value = data.path;
     renderAll();
-    setStatus("Loaded " + data.path);
+    if (data.path.endsWith(".json")) {
+        setStatus("Loaded " + data.path);
+    } else {
+        setStatus("Loaded " + data.path + " -- Save here requires a .json "
+            + "config file; switch to Raw TOML to save this one.");
+    }
     return true;
 }
 

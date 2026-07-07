@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from aves.web.server import create_app
 
 VALID_CONFIG_TEXT = 'version = 3\n\n[gui]\nx_column = "t"\naxes = []\n'
+VALID_CONFIG_JSON_TEXT = '{"version": 3, "gui": {"x_column": "t", "axes": []}}'
 
 
 def test_get_config_returns_the_gui_config_as_is():
@@ -146,9 +147,9 @@ def test_get_settings_structured_returns_the_parsed_config(tmp_path):
     }
 
 
-def test_put_settings_structured_writes_toml_to_disk(tmp_path):
-    config_file = tmp_path / "config.toml"
-    config_file.write_text(VALID_CONFIG_TEXT)
+def test_put_settings_structured_writes_json_to_disk(tmp_path):
+    config_file = tmp_path / "config.json"
+    config_file.write_text(VALID_CONFIG_JSON_TEXT)
     app = create_app({"x_column": "t", "axes": []}, config_path=str(config_file))
     new_config = {"version": 3, "gui": {"x_column": "time", "axes": []}}
 
@@ -161,8 +162,8 @@ def test_put_settings_structured_writes_toml_to_disk(tmp_path):
 
 
 def test_put_settings_structured_rejects_wrong_version_without_touching_disk(tmp_path):
-    config_file = tmp_path / "config.toml"
-    config_file.write_text(VALID_CONFIG_TEXT)
+    config_file = tmp_path / "config.json"
+    config_file.write_text(VALID_CONFIG_JSON_TEXT)
     app = create_app({"x_column": "t", "axes": []}, config_path=str(config_file))
 
     with TestClient(app) as client:
@@ -170,10 +171,14 @@ def test_put_settings_structured_rejects_wrong_version_without_touching_disk(tmp
             "/api/settings/structured", json={"config": {"version": 1}})
 
     assert response.status_code == 400
-    assert config_file.read_text() == VALID_CONFIG_TEXT
+    assert config_file.read_text() == VALID_CONFIG_JSON_TEXT
 
 
-def test_put_settings_structured_rejects_values_toml_cannot_represent(tmp_path):
+def test_put_settings_structured_rejects_a_non_json_config_path(tmp_path):
+    """The Form editor only ever writes JSON -- saving it against a
+    server currently using a .toml config must be refused (pointing at
+    Raw TOML or 'Load a different file' instead), not silently write
+    JSON content into a .toml-named file."""
     config_file = tmp_path / "config.toml"
     config_file.write_text(VALID_CONFIG_TEXT)
     app = create_app({"x_column": "t", "axes": []}, config_path=str(config_file))
@@ -181,9 +186,10 @@ def test_put_settings_structured_rejects_values_toml_cannot_represent(tmp_path):
     with TestClient(app) as client:
         response = client.put(
             "/api/settings/structured",
-            json={"config": {"version": 3, "gui": {"x_column": None}}})
+            json={"config": {"version": 3, "gui": {"x_column": "time", "axes": []}}})
 
     assert response.status_code == 400
+    assert ".json" in response.json()["detail"]
     assert config_file.read_text() == VALID_CONFIG_TEXT
 
 

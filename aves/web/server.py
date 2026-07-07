@@ -24,13 +24,19 @@ create_app(gui_config, token=...) returns a FastAPI app exposing:
    to actually stop/rebuild/restart the acquisition; without one, the
    restart endpoint just reports that restarting isn't supported).
  - GET/PUT /api/settings/structured: the same config file, as a parsed
-   dict (GET) or accepting one to serialize and save (PUT), for the
-   browser's form-based editor -- an alternative to the raw-text
-   /api/settings above, not a replacement (round-tripping through a
-   form necessarily normalizes away comments and formatting, so the
-   raw-text editor stays available for anyone who cares about those).
-   PUT re-parses its own tomli_w output through parse_config_text
-   before writing, so a config a form can produce but this module's
+   dict (GET) or accepting one to save (PUT), for the browser's
+   form-based editor -- an alternative to the raw-text /api/settings
+   above, not a replacement (round-tripping through a form necessarily
+   normalizes away comments and formatting, so the raw-text editor
+   stays available for anyone who cares about those). GET works for a
+   TOML or JSON config file alike (aves.utils.parse_config_text picks
+   the format from the extension); PUT only ever writes JSON (plain
+   json.dumps, no extra dependency -- the dict it's given came from a
+   browser's fetch() body, so it's already JSON-shaped data), so it
+   requires the active config to be a .json file, telling the browser
+   to use the raw-text editor or "Load a different file" otherwise.
+   Either way, PUT re-parses its own output through parse_config_text
+   before writing, so a config the form can produce but this module's
    own reader would reject can never reach disk.
  - /, /settings.html: the frontend's two pages, rendered (not served
    verbatim) so the auth token can be embedded for the page's own JS to
@@ -58,7 +64,6 @@ import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import tomli_w
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -230,12 +235,18 @@ def create_app(gui_config, config_path=None, token=None):
             raise HTTPException(
                 status_code=400,
                 detail="this server was not started with a config file")
-        try:
-            text = tomli_w.dumps(payload.config)
-        except (TypeError, ValueError) as exc:
+        if not app.state.config_path.endswith(".json"):
             raise HTTPException(
                 status_code=400,
-                detail=f"could not turn this into a TOML file: {exc}")
+                detail=(
+                    "the Form editor only saves .json config files, but "
+                    f"this server is using {app.state.config_path}. Use "
+                    "the Raw TOML view to save, or 'Load a different "
+                    "file' to point this server at a .json config."))
+        # payload.config was itself decoded from this request's JSON body,
+        # so it is already JSON-shaped data -- json.dumps on it cannot
+        # raise the way a TOML writer could on, say, a null value.
+        text = json.dumps(payload.config, indent=2) + "\n"
         try:
             parse_config_text(text, source_name=app.state.config_path)
         except ValueError as exc:
