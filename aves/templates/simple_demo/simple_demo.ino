@@ -11,7 +11,12 @@ void setup()
 {
 
   Serial.begin(SERIAL_PORT_BAUDS);
+#if defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_ESP32)
+  /* Only supported on some boards (Due, Zero, MKR family, ESP32, ...);
+   * classic AVR boards (Uno, Nano, Mega) don't have analogReadResolution()
+   * and are already fixed at 10 bits, which is what we want here anyway. */
   analogReadResolution(10); /* 10 bits => 2^10 = 1024 levels in analogRead() */
+#endif
 }
 
 void loop() {
@@ -26,7 +31,7 @@ void loop() {
      * analogRead maps voltage from the input range (usually [0, 5] or [0, 3.3] volts)
      * to integer values in the range [0, 1023] or [0, 4095] (depends on the resolution)
      */
-    Serial.print(millis());
+    Serial.print(curMillis);
     Serial.print(" ");
     Serial.print(sensor1);
     Serial.print(" ");
